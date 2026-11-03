@@ -1,4 +1,4 @@
-package com.inkreader.app;
+package com.inkstone.reader;
 
 import com.getcapacitor.BridgeActivity;
 

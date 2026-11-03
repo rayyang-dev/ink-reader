@@ -737,6 +737,71 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
 .bc-ai-btn.busy { opacity: 0.6; }
 
 
+/* ---------- 阅读统计面板 ---------- */
+.stats-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 14px;
+  padding: 13px 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.stats-tab.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
+.stats-tab:active { background: var(--fg); color: var(--bg); }
+.stats-body { padding: 14px 16px 40px; }
+.stats-summary { display: flex; gap: 10px; margin-bottom: 18px; }
+.ss-item {
+  flex: 1;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px 6px;
+  text-align: center;
+  background: var(--bg);
+}
+.ss-val { font-size: 17px; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.ss-label { font-size: 12px; color: var(--fg-soft); margin-top: 4px; }
+.stats-booklist { display: flex; flex-direction: column; }
+.stats-book-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 14px;
+}
+.stats-book-row:last-child { border-bottom: none; }
+.sb-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-time { flex: 0 0 auto; color: var(--fg-soft); font-variant-numeric: tabular-nums; margin-left: 10px; }
+
+/* 分组书架：外层容器在分组态下改为块级，内层 .book-list 仍是卡片网格 */
+#book-list.grouped { display: block; }
+.group-header {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin: 16px 2px 8px;
+}
+
+/* 打卡成功提示（墨水屏：无动画、固定底部居中高对比胶囊） */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  transform: translateX(-50%);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  z-index: 60;
+  max-width: 80%;
+  text-align: center;
+}
+
 /* ---------- 移动端 / 手机优化 ---------- */
 @media (max-width: 480px) {
   .shelf-head { margin-bottom: 18px; }

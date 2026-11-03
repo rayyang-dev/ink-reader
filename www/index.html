@@ -70,6 +70,7 @@
         <div class="bb-group bb-tools">
           <button id="btn-bookmark" class="icon-btn">书签</button>
           <button id="btn-ai" class="icon-btn">AI</button>
+          <button id="btn-stats" class="icon-btn">统计</button>
           <button id="btn-toc" class="icon-btn">目录</button>
           <button id="btn-settings" class="icon-btn">设置</button>
         </div>
@@ -197,6 +198,20 @@
             <p class="hint group-hint">AI 引擎默认关闭，不影响离线阅读。启用「AI 大模型」并填 Key 后，阅读页可选中文字「译 / 解释」、打开「AI 助手」生成全书或本章导读、书中问答、人物脉络笔记、智能书架标签、段落双语对照。API Key 仅存本机，本应用无服务器；支持任意 OpenAI 兼容接口（DeepSeek / 通义 / 本地 Ollama）。</p>
           </div>
 
+          <div class="settings-group">
+            <div class="group-title">阅读与书架</div>
+            <div class="group-body">
+              <div class="field">
+                <label>阅读打卡阈值 <span id="val-checkin"></span></label>
+                <input type="range" id="set-checkin" min="1" max="60" step="1" />
+              </div>
+              <div class="field">
+                <label class="switch"><input type="checkbox" id="set-group-tag" /> 书架按 AI 类型分组</label>
+              </div>
+            </div>
+            <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按 AI 类型分组」后，书架空按书的首个 AI 标签归类，未分类的归入「未分类」。</p>
+          </div>
+
         </div>
       </aside>
 
@@ -264,6 +279,25 @@
         <div id="ai-explain-text"></div>
       </div>
     </section>
+
+    <!-- 阅读统计面板（置于 body 级，书架 / 阅读器均可打开） -->
+    <aside id="panel-stats" class="panel">
+      <div class="panel-head"><span>阅读统计</span><button class="panel-close" data-close="panel-stats">✕</button></div>
+      <div class="ai-tabs">
+        <button class="stats-tab active" data-stats-tab="day">日</button>
+        <button class="stats-tab" data-stats-tab="week">周</button>
+        <button class="stats-tab" data-stats-tab="month">月</button>
+      </div>
+      <div class="stats-body">
+        <div class="stats-summary">
+          <div class="ss-item"><div class="ss-val" id="ss-total">0 分钟</div><div class="ss-label">总时长</div></div>
+          <div class="ss-item"><div class="ss-val" id="ss-books">0 本</div><div class="ss-label">阅读书目</div></div>
+          <div class="ss-item"><div class="ss-val" id="ss-checkin">未打卡</div><div class="ss-label">打卡</div></div>
+        </div>
+        <div id="stats-booklist" class="stats-booklist"></div>
+      </div>
+    </aside>
+    <div id="toast" class="hidden"></div>
 
     <!-- EPUB 解压库（UMD 全局 fflate） -->
     <script src="js/vendor/fflate.js"></script>

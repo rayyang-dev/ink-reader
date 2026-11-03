@@ -10,6 +10,8 @@
 |------|----------|
 | ![书架](docs/screen-shelf.png) | ![阅读内页](docs/screen-reader.png) |
 | ![AI 助手面板](docs/screen-ai.png) | ![选中即问 / AI 解释](docs/screen-select.png) |
+| 分组书架（按 AI 类型） | 阅读统计与打卡 |
+| ![分组书架](docs/screenshots/03-shelf-grouped.png) | ![阅读统计](docs/screenshots/06-stats-day.png) |
 
 <p align="center">
   <a href="https://github.com/rayyang-dev/ink-reader/releases"><img src="https://img.shields.io/badge/APK-下载-brightgreen" alt="APK"/></a>
@@ -37,8 +39,10 @@
 - 🔤 **中英互译**：划词即译，可选 Mock / DeepL / Google / 兼容 OpenAI 的 LLM 后端，密钥仅存本地，默认关闭
 - 🤖 **AI 助手（本地优先）**：同一套 Key/模型即可解锁「全书/本章导读、选中即问、书中问答、人物脉络笔记、智能书架标签、段落双语对照」；结果缓存到本机，默认关闭、按需联网
 - 📱 **响应式 + PWA**：同一套界面适配手机 / 平板；可「添加到主屏幕」离线使用
-- 💾 **本地存储**：书籍内容存 IndexedDB，设置 / 进度 / 书签存 localStorage（均带内存兜底）
-- 🤖 **Android 原生壳**：基于 Capacitor，打包为 `com.inkreader.app`（应用名「砚白」）
+- 💾 **本地存储**：书籍内容存 IndexedDB，设置 / 进度 / 书签 / 统计存 localStorage（均带内存兜底）
+- 📊 **阅读统计与打卡**：按日 / 周 / 月统计读了哪些书、各花多少时间；当日累计达「打卡阈值」（默认 10 分钟，可设置）自动打卡
+- 🗂 **书架自动整理**：开启「书架按 AI 类型分组」后，书架空按 AI 标签归类，配合顶部标签筛选条快速找书
+- 🤖 **Android 原生壳**：基于 Capacitor，打包为 `com.inkstone.reader`（应用名「砚白」）
 
 ---
 
@@ -62,6 +66,18 @@
 - **自动导读**（可选开关）：导入新书且已配置 AI 时，后台静默生成导读并缓存，打开即看。
 
 > 隐私与设计原则：**本地优先、零追踪**。AI 功能默认关闭；启用后也只有当你主动触发（生成/提问/解释/翻译）才会向你所填的接口地址发请求，书籍与结果始终只存你自己的设备。
+
+---
+
+## 📊 阅读统计 · 打卡 · 自动整理书架
+
+砚白把「读得多认真」也留在本地（同样只存本机、不联网）：
+
+- **阅读统计**：阅读页底部「统计」按钮打开统计面板，按 **日 / 周 / 月** 切换，展示总时长、阅读书目数、打卡状态，以及每本书的阅读分钟数明细。
+- **自动打卡**：在阅读页停留即累计时长；**切到后台或打开任意面板时自动暂停**，避免虚高。当日累计达到「打卡阈值」即自动打卡并弹出轻提示。打卡阈值默认 10 分钟，可在 **阅读设置 → 阅读与书架** 调整（1–60 分钟）。
+- **书架自动整理**：在 **阅读设置 → 阅读与书架** 开启「书架按 AI 类型分组」后，书架空按每本书的 AI 标签归类，未分类的归入「未分类」；书架顶部的标签筛选条可一键按标签过滤。
+
+> 计时与打卡数据仅存于本机 localStorage，不上传、不联网。AI 归类（标签来源）默认关闭、按需使用，不影响离线阅读。
 
 ---
 
@@ -154,7 +170,7 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 - 前端：原生 ES Modules（无打包构建）、IndexedDB、Service Worker（PWA）
 - 解析：[fflate](https://github.com/101arrowz/fflate)（EPUB）、[pdf.js v4](https://github.com/mozilla/pdf.js)（PDF）、自研 MOBI 解析器
 - 原生壳：Capacitor 8（Android）
-- 测试：Node 原生 `node:test`（解析 / 翻译 / 端到端共 5 套用例，全部通过）
+- 测试：Node 原生 `node:test` + Playwright；含「设置 / 统计打卡 / 日周月聚合 / 书架元数据」全功能自测、真实浏览器冒烟（断言新控件已接入 DOM 并全页面截图）、解析 / 翻译 / 端到端共 20+ 用例，全部通过
 
 ---
 

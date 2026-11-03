@@ -4,6 +4,7 @@ import {
   putBook, getBook, deleteBook, listBooksMeta,
   loadProgress, saveProgress, getProgress,
   loadBookmarks, saveBookmarks,
+  addReadingTime, aggregateStats, loadStats, todayKey,
 } from './store.js';
 import { paginateChapter, chapterCharCount } from './paginate.js';
 import { parseTxt, parseEpub, parsePdf, parseMobi } from './importers.js';
@@ -32,6 +33,9 @@ let turnCounter = 0;
 const pageCache = new Map(); // ci + 设置哈希 -> 分页
 let repTimer = null;
 let currentPdfDoc = null; // PDF 阅读时持有的 pdf.js doc
+let readingTimer = null; // 阅读计时器
+let readingLastTs = 0; // 上一次计时戳
+let toastTimer = null;
 const pdfImageCache = new Map(); // ci -> 已渲染的图片 dataURL
 
 const $ = (id) => document.getElementById(id);
@@ -78,6 +82,9 @@ function syncSettingsUI() {
   $('set-tbase').value = settings.translateLlmBase || 'https://api.openai.com/v1';
   $('set-tmodel').value = settings.translateLlmModel || 'gpt-4o-mini';
   $('set-ai-auto').checked = !!settings.aiAutoSummary;
+  $('set-checkin').value = settings.checkinGoalMin;
+  $('val-checkin').textContent = settings.checkinGoalMin + ' 分钟';
+  $('set-group-tag').checked = !!settings.shelfGroupByTag;
   updateTranslateFieldsVisibility();
 }
 
@@ -137,44 +144,97 @@ async function renderShelf() {
   }
 
   const shown = activeTagFilter ? list.filter((b) => (b.aiTags || []).includes(activeTagFilter)) : list;
-  if (!shown.length) {
-    el.innerHTML = '<p class="empty-tip">该标签下暂无书籍。</p>';
+
+  const grouped = settings.shelfGroupByTag && tagCount.size > 0;
+  el.classList.toggle('grouped', grouped);
+  if (!grouped) {
+    if (!shown.length) {
+      el.innerHTML = '<p class="empty-tip">该标签下暂无书籍。</p>';
+      return;
+    }
+    shown.forEach((b) => el.appendChild(renderBookCard(b)));
     return;
   }
 
-  for (const b of shown) {
-    const card = document.createElement('div');
-    card.className = 'book-card';
-    const coverChar = (b.title || '?').trim().charAt(0) || '?';
-    const tagsHtml = (b.aiTags && b.aiTags.length)
-      ? `<div class="bc-tags">${b.aiTags.map((t) => `<span class="tag-chip sm">${escapeHtml(t)}</span>`).join('')}</div>`
-      : '';
-    const aiLabel = (b.aiTags && b.aiTags.length) ? '重做归类' : 'AI 归类';
-    card.innerHTML =
-      `<div class="bc-cover">${escapeHtml(coverChar)}</div>` +
-      `<div class="bc-body">` +
-        `<div class="bc-title">${escapeHtml(b.title)}</div>` +
-        `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
-        tagsHtml +
-        `<button class="bc-ai-btn" data-ai="${b.id}">${aiLabel}</button>` +
-      `</div>` +
-      `<div class="bc-del" data-del="${b.id}">删除</div>`;
-    card.addEventListener('click', () => openBook(b.id));
-    card.querySelector('.bc-del').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (confirm(`确定从本机删除《${b.title}》？此操作不可恢复。`)) {
-        await deleteBook(b.id);
-        activeTagFilter = null;
-        renderShelf();
-      }
-    });
-    const aiEl = card.querySelector('.bc-ai-btn');
-    aiEl.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await categorizeBook(b.id, aiEl);
-    });
-    el.appendChild(card);
+  // 按类型（AI 标签）分组书架
+  const groups = new Map();
+  const uncategorized = [];
+  shown.forEach((b) => {
+    if (b.aiTags && b.aiTags.length) {
+      const t = b.aiTags[0];
+      if (activeTagFilter && t !== activeTagFilter) return;
+      if (!groups.has(t)) groups.set(t, []);
+      groups.get(t).push(b);
+    } else {
+      if (activeTagFilter) return;
+      uncategorized.push(b);
+    }
+  });
+  if (!groups.size && !uncategorized.length && !shown.length) {
+    el.innerHTML = '<p class="empty-tip">该标签下暂无书籍。</p>';
+    return;
   }
+  Array.from(groups.keys()).sort().forEach((t) => {
+    el.appendChild(mkGroupHeader(t));
+    el.appendChild(mkBookRow(groups.get(t)));
+  });
+  if (!activeTagFilter && uncategorized.length) {
+    el.appendChild(mkGroupHeader('未分类'));
+    el.appendChild(mkBookRow(uncategorized));
+  }
+}
+
+function mkTagChip(text, active, onClick) {
+  const c = document.createElement('button');
+  c.className = 'tag-chip' + (active ? ' active' : '');
+  c.textContent = text;
+  c.addEventListener('click', onClick);
+  return c;
+}
+function mkGroupHeader(text) {
+  const h = document.createElement('div');
+  h.className = 'group-header';
+  h.textContent = text;
+  return h;
+}
+function mkBookRow(books) {
+  const wrap = document.createElement('div');
+  wrap.className = 'book-list';
+  books.forEach((b) => wrap.appendChild(renderBookCard(b)));
+  return wrap;
+}
+function renderBookCard(b) {
+  const card = document.createElement('div');
+  card.className = 'book-card';
+  const coverChar = (b.title || '?').trim().charAt(0) || '?';
+  const tagsHtml = (b.aiTags && b.aiTags.length)
+    ? `<div class="bc-tags">${b.aiTags.map((t) => `<span class="tag-chip sm">${escapeHtml(t)}</span>`).join('')}</div>`
+    : '';
+  const aiLabel = (b.aiTags && b.aiTags.length) ? '重做归类' : 'AI 归类';
+  card.innerHTML =
+    `<div class="bc-cover">${escapeHtml(coverChar)}</div>` +
+    `<div class="bc-body">` +
+      `<div class="bc-title">${escapeHtml(b.title)}</div>` +
+      `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
+      tagsHtml +
+      `<button class="bc-ai-btn" data-ai="${b.id}">${aiLabel}</button>` +
+    `</div>` +
+    `<div class="bc-del" data-del="${b.id}">删除</div>`;
+  card.addEventListener('click', () => openBook(b.id));
+  card.querySelector('.bc-del').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (confirm(`确定从本机删除《${b.title}》？此操作不可恢复。`)) {
+      await deleteBook(b.id);
+      activeTagFilter = null;
+      renderShelf();
+    }
+  });
+  const aiEl = card.querySelector('.bc-ai-btn');
+  aiEl.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await categorizeBook(b.id, aiEl);
+  });
+  return card;
 }
 
 async function categorizeBook(id, el) {
@@ -369,9 +429,11 @@ async function openBook(id) {
   await renderPage();
   buildToc();
   buildBookmarks();
+  startReadingTimer();
 }
 function backToShelf() {
   hideTranslate();
+  stopReadingTimer();
   if (currentPdfDoc) {
     try { currentPdfDoc.destroy(); } catch (e) {}
     currentPdfDoc = null;
@@ -571,6 +633,77 @@ function addBookmark() {
   m[currentBook.id].push({ ci, pi, label, at: Date.now() });
   saveBookmarks(m);
   buildBookmarks();
+}
+
+// ---------- 阅读计时 / 打卡 ----------
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 2800);
+}
+// 阅读时累计时长：仅在阅读器可见、未在后台、未打开面板时计时；跨过打卡阈值自动打卡
+function startReadingTimer() {
+  stopReadingTimer();
+  readingLastTs = Date.now();
+  readingTimer = setInterval(() => {
+    const now = Date.now();
+    const dt = now - readingLastTs;
+    readingLastTs = now;
+    if (document.hidden) return; // 后台不计时，避免回到前台时跳变
+    if ($('reader').classList.contains('hidden')) return;
+    if (document.querySelector('.panel.open')) return; // 面板打开（设置/AI/统计）时暂停
+    if (dt <= 0 || dt > 60000) return; // 异常间隔忽略
+    const { justCheckedIn } = addReadingTime(currentBook.id, dt);
+    if (justCheckedIn) showToast(`今日阅读已打卡 ✓（≥${settings.checkinGoalMin} 分钟）`);
+  }, 1000);
+}
+function stopReadingTimer() {
+  if (readingTimer) { clearInterval(readingTimer); readingTimer = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  readingLastTs = Date.now(); // 回到前台重置，避免补偿式跳增
+});
+
+// ---------- 阅读统计面板 ----------
+function renderStats(mode) {
+  const stats = loadStats();
+  const agg = aggregateStats(stats, mode);
+  const totalMin = Math.round(agg.totalMs / 60000);
+  $('ss-total').textContent = totalMin + ' 分钟';
+  const bookIds = Object.keys(agg.byBook);
+  $('ss-books').textContent = bookIds.length + ' 本';
+  let checkinText = '未打卡';
+  if (mode === 'day') {
+    const today = stats[todayKey()];
+    checkinText = today && today.checkin ? '已打卡 ✓' : '未打卡';
+  } else {
+    checkinText = agg.checkinDays > 0 ? `已打卡 ${agg.checkinDays} 天` : '未打卡';
+  }
+  $('ss-checkin').textContent = checkinText;
+  const list = $('stats-booklist');
+  list.innerHTML = '';
+  if (!bookIds.length) {
+    list.innerHTML = '<p class="empty-tip">本期还没有阅读记录。</p>';
+    return;
+  }
+  listBooksMeta().then((metas) => {
+    if (!$('panel-stats').classList.contains('open')) return; // 面板已关，放弃填充
+    const titleMap = {};
+    metas.forEach((m) => (titleMap[m.id] = m.title));
+    const sorted = bookIds.slice().sort((a, b) => agg.byBook[b] - agg.byBook[a]);
+    sorted.forEach((id) => {
+      const min = Math.round(agg.byBook[id] / 60000);
+      const d = document.createElement('div');
+      d.className = 'stats-book-row';
+      d.innerHTML =
+        `<span class="sb-title">${escapeHtml(titleMap[id] || '未知书目')}</span>` +
+        `<span class="sb-time">${min} 分钟</span>`;
+      list.appendChild(d);
+    });
+  });
 }
 
 // ---------- AI 面板逻辑 ----------
@@ -803,6 +936,13 @@ function bindEvents() {
   $('btn-toc-top').addEventListener('click', () => openPanel('panel-toc'));
   $('btn-bookmark').addEventListener('click', () => { buildBookmarks(); openPanel('panel-bookmark'); });
   $('btn-ai').addEventListener('click', () => { openPanel('panel-ai'); loadCachedGuide(); });
+  $('btn-stats').addEventListener('click', () => { openPanel('panel-stats'); renderStats('day'); });
+  document.querySelectorAll('.stats-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.stats-tab').forEach((x) => x.classList.toggle('active', x === b));
+      renderStats(b.dataset.statsTab);
+    });
+  });
   $('btn-settings').addEventListener('click', () => openPanel('panel-settings'));
   $('bm-add').addEventListener('click', addBookmark);
 
@@ -885,6 +1025,13 @@ function bindEvents() {
   });
   $('set-ai-auto').addEventListener('change', (e) => {
     settings.aiAutoSummary = e.target.checked; saveSettings(settings);
+  });
+  // 打卡阈值 + 书架分组
+  bindRange('set-checkin', 'checkinGoalMin', (v) => parseInt(v, 10), (v) => ($('val-checkin').textContent = v + ' 分钟'));
+  $('set-group-tag').addEventListener('change', (e) => {
+    settings.shelfGroupByTag = e.target.checked;
+    applySettings(); saveSettings(settings);
+    renderShelf();
   });
   initTranslateSelection();
 

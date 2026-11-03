@@ -186,6 +186,8 @@ export const DEFAULT_SETTINGS = {
   translateLlmModel: 'gpt-4o-mini',
   translateDir: 'auto',
   aiAutoSummary: true, // 导入书籍且已配置 AI 时，自动在后台生成导读/摘要并缓存到本书
+  checkinGoalMin: 10, // 阅读打卡阈值（分钟）：当日累计阅读达到该时长即自动打卡成功
+  shelfGroupByTag: false, // 书架是否按 AI 标签（类型）分组
 };
 
 export function loadSettings() {
@@ -212,4 +214,84 @@ export function loadBookmarks() {
 }
 export function saveBookmarks(map) {
   lsSet(K_BOOKMARKS, map);
+}
+
+// ---------- 阅读统计 / 打卡 ----------
+const K_STATS = 'inkreader:stats';
+
+function dateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+export function todayKey(d) {
+  return dateKey(d || new Date());
+}
+function dayTotal(day) {
+  let t = 0;
+  for (const id in day.byBook) t += day.byBook[id];
+  return t;
+}
+export function loadStats() {
+  return lsGet(K_STATS, {});
+}
+export function saveStats(stats) {
+  lsSet(K_STATS, stats);
+}
+// 累计某本书当日的阅读毫秒数；跨过打卡阈值时标记当日打卡并返回 justCheckedIn
+export function addReadingTime(bookId, ms) {
+  if (!bookId || !ms || ms <= 0) return { dayStat: null, justCheckedIn: false };
+  const stats = loadStats();
+  const k = todayKey();
+  if (!stats[k]) stats[k] = { byBook: {}, checkin: false, checkinAt: null };
+  const day = stats[k];
+  day.byBook[bookId] = (day.byBook[bookId] || 0) + ms;
+  const goal = (loadSettings().checkinGoalMin || 10) * 60000;
+  let justCheckedIn = false;
+  if (!day.checkin && dayTotal(day) >= goal) {
+    day.checkin = true;
+    day.checkinAt = Date.now();
+    justCheckedIn = true;
+  }
+  saveStats(stats);
+  return { dayStat: day, justCheckedIn };
+}
+// 按 日 / 周 / 月 聚合统计；返回 { totalMs, byBook, checkinDays, days }
+export function aggregateStats(stats, mode, ref) {
+  const r = ref || new Date();
+  let keys;
+  if (mode === 'day') {
+    keys = [todayKey(r)];
+  } else if (mode === 'week') {
+    const d = new Date(r.getFullYear(), r.getMonth(), r.getDate());
+    const dow = (d.getDay() + 6) % 7; // 周一为一周起点
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - dow);
+    keys = [];
+    for (let i = 0; i < 7; i++) {
+      const x = new Date(mon);
+      x.setDate(mon.getDate() + i);
+      keys.push(dateKey(x));
+    }
+  } else {
+    const y = r.getFullYear();
+    const m = r.getMonth();
+    const dayCount = new Date(y, m + 1, 0).getDate();
+    keys = [];
+    for (let i = 1; i <= dayCount; i++) keys.push(dateKey(new Date(y, m, i)));
+  }
+  let totalMs = 0;
+  const byBook = {};
+  let checkinDays = 0;
+  for (const k of keys) {
+    const s = stats[k];
+    if (!s) continue;
+    if (s.checkin) checkinDays++;
+    for (const id in s.byBook) {
+      byBook[id] = (byBook[id] || 0) + s.byBook[id];
+      totalMs += s.byBook[id];
+    }
+  }
+  return { totalMs, byBook, checkinDays, days: keys.length };
 }
