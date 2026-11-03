@@ -91,17 +91,28 @@ function escapeHtml(s) {
 async function renderShelf() {
   const list = await listBooksMeta();
   const el = $('book-list');
+  const empty = $('shelf-empty');
+  const hint = $('drop-hint');
   el.innerHTML = '';
   if (!list.length) {
-    el.innerHTML = '<p class="empty-tip">还没有书。点上方按钮导入 TXT / EPUB，或先「读示例书」体验。</p>';
+    el.classList.add('hidden');
+    empty.classList.remove('hidden');
+    hint.classList.add('hidden');
     return;
   }
+  el.classList.remove('hidden');
+  empty.classList.add('hidden');
+  hint.classList.remove('hidden');
   for (const b of list) {
     const card = document.createElement('div');
     card.className = 'book-card';
+    const coverChar = (b.title || '?').trim().charAt(0) || '?';
     card.innerHTML =
-      `<div class="bc-title">${escapeHtml(b.title)}</div>` +
-      `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
+      `<div class="bc-cover">${escapeHtml(coverChar)}</div>` +
+      `<div class="bc-body">` +
+        `<div class="bc-title">${escapeHtml(b.title)}</div>` +
+        `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
+      `</div>` +
       `<div class="bc-del" data-del="${b.id}">删除</div>`;
     card.addEventListener('click', () => openBook(b.id));
     card.querySelector('.bc-del').addEventListener('click', async (e) => {
@@ -196,7 +207,7 @@ async function renderPage() {
 function updateProgress() {
   const total = pages.length;
   const pct = computeProgressPct();
-  $('progress').textContent = `第${ci + 1}/${currentBook.chapters.length}章 · ${pi + 1}/${total} · 约${pct.toFixed(0)}%`;
+  $('progress').textContent = `第${ci + 1}/${currentBook.chapters.length}章 · 第${pi + 1}/${total}页 · ${pct.toFixed(0)}%`;
 }
 function regalFlash() {
   const r = $('reader');
