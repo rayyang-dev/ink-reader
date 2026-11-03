@@ -1,0 +1,332 @@
+// 内容导入：TXT（自动分段 + 章节检测）与 EPUB（fflate 解压，解析 OPF/NCX/NAV，内联图片，抽取目录）
+import { openPdf } from './pdfview.js';
+import { parseMobi } from './mobidec.js';
+export { parseMobi };
+
+function hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+function normalizePath(p) {
+  return decodeURIComponent(p).replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+}
+function escapeReg(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ---------------- TXT ----------------
+export async function parseTxt(file) {
+  const text = await file.text();
+  const name = (file.name || '未命名').replace(/\.[^.]+$/, '');
+  const rawLines = text.split(/\r?\n/).map((s) => s.trim());
+  const chapterRe = /^(第[零一二三四五六七八九十百千0-9]+[章回卷部篇节]|chapter\s+\d+|序章|序言|前言|引言|尾声|后记|附录)/i;
+
+  const chapters = [];
+  let cur = { title: name, paras: [] };
+  for (const line of rawLines) {
+    if (!line) continue;
+    if (chapterRe.test(line)) {
+      if (cur.paras.length > 0) {
+        chapters.push(cur);
+        cur = { title: line, paras: [] };
+      } else {
+        cur.title = line; // 首个标题直接作为当前章标题
+      }
+    } else {
+      cur.paras.push(line);
+    }
+  }
+  if (cur.paras.length > 0) chapters.push(cur);
+
+  if (!chapters.length) {
+    chapters.push({ title: name, paras: rawLines.filter(Boolean) });
+  }
+  const built = chapters.map((c) => ({
+    title: c.title,
+    html: '<p>' + c.paras.join('</p><p>') + '</p>',
+  }));
+  return {
+    id: 'txt-' + hash(name + Date.now()),
+    title: name,
+    author: '',
+    source: 'txt',
+    chapters: built,
+  };
+}
+
+// ---------------- EPUB ----------------
+export async function parseEpub(file) {
+  const fflate = window.fflate;
+  if (!fflate) throw new Error('EPUB 解压库（fflate）未加载，请检查网络后刷新');
+  if (!file || !file.arrayBuffer) throw new Error('传入的不是有效文件对象');
+  let buf;
+  try {
+    buf = await file.arrayBuffer();
+  } catch (e) {
+    throw new Error('读取文件失败：' + (e && e.message ? e.message : e));
+  }
+  let files;
+  try {
+    files = unzipToMap(new Uint8Array(buf), fflate);
+  } catch (e) {
+    throw new Error('EPUB 解压失败（可能不是标准 EPUB/ZIP，或为加密书）：' + (e && e.message ? e.message : e));
+  }
+  if (!Object.keys(files).length) throw new Error('EPUB 为空或不是有效 ZIP 包');
+
+  // 1. container.xml -> OPF
+  const container = decode(files[normalizePath('META-INF/container.xml')]);
+  if (!container) throw new Error('EPUB 结构异常：缺少 META-INF/container.xml');
+  const opfPath = (container.match(/full-path="([^"]+)"/) || container.match(/full-path='([^']+)'/))[1];
+  if (!opfPath) throw new Error('无法从 container.xml 定位 OPF 文件');
+  const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
+  const opfText = decode(files[normalizePath(opfPath)]);
+  if (!opfText) throw new Error('无法读取 OPF 文件');
+
+  // 2. manifest + spine
+  const manifest = parseManifest(opfText);
+  const spine = parseSpine(opfText);
+
+  // 3. TOC（nav / ncx）
+  const tocMap = findTocMap(opfText, files, opfDir);
+
+  // 4. 构建章节
+  const chapters = [];
+  for (const idref of spine) {
+    const item = manifest[idref];
+    if (!item) continue;
+    const mt = (item.mediaType || '').toLowerCase();
+    if (!/html|xhtml|xml/.test(mt) && !/\.x?html?$/.test(item.href)) continue;
+    const fullKey = normalizePath(joinPath(opfDir, item.href));
+    const raw = files[fullKey];
+    if (!raw) continue;
+    let html = decode(raw);
+    html = extractBody(html);
+    html = inlineImages(html, opfDir, files);
+    html = sanitize(html);
+    const title = findTitle(html, tocMap, fullKey, chapters.length);
+    chapters.push({ title, html });
+  }
+  if (!chapters.length) throw new Error('未在 EPUB 中找到可读章节（spine 指向的内容文件可能缺失或被加密）');
+
+  const title = (opfText.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i) || [])[1] || (file.name || '未命名').replace(/\.[^.]+$/, '');
+  const author = (opfText.match(/<dc:creator[^>]*>([^<]+)<\/dc:creator>/i) || [])[1] || '';
+  return {
+    id: 'epub-' + hash(title + author + Date.now()),
+    title: title.trim(),
+    author: author.trim(),
+    source: 'epub',
+    chapters,
+  };
+}
+
+function unzipToMap(uint8, fflate) {
+  const out = fflate.unzipSync(uint8);
+  const map = {};
+  for (const k in out) map[normalizePath(k)] = out[k];
+  return map;
+}
+
+function decode(uint8) {
+  if (!uint8) return '';
+  let s = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
+  // 大量替换符说明编码非 UTF-8，尝试 GBK（老版中文 EPUB）
+  const bad = (s.match(/\ufffd/g) || []).length;
+  if (bad > s.length * 0.02 && bad > 5) {
+    try {
+      s = new TextDecoder('gbk', { fatal: false }).decode(uint8);
+    } catch (e) {}
+  }
+  return s;
+}
+
+function parseManifest(opf) {
+  const map = {};
+  const itemRe = /<item\b([^>]*)>/gi;
+  let m;
+  while ((m = itemRe.exec(opf))) {
+    const tag = m[1];
+    const id = (tag.match(/id="([^"]+)"/i) || [])[1];
+    const href = (tag.match(/href="([^"]+)"/i) || [])[1];
+    const mediaType = (tag.match(/media-type="([^"]+)"/i) || [])[1];
+    if (id && href) map[id] = { href, mediaType };
+  }
+  return map;
+}
+function parseSpine(opf) {
+  const m = opf.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i);
+  if (!m) return [];
+  const refs = [];
+  const re = /<itemref\b[^>]*idref="([^"]+)"/gi;
+  let r;
+  while ((r = re.exec(m[1]))) refs.push(r[1]);
+  return refs;
+}
+
+function findTocMap(opf, files, opfDir) {
+  const map = new Map();
+  const itemRe = /<item\b([^>]*)>/gi;
+  let m;
+  let navItem = null;
+  let ncxItem = null;
+  while ((m = itemRe.exec(opf))) {
+    const tag = m[1];
+    if (/properties="[^"]*nav[^"]*"/i.test(tag) && !navItem) navItem = tag;
+    if (/media-type="application\/x-dtbncx\+xml"/i.test(tag) && !ncxItem) ncxItem = tag;
+  }
+  if (navItem) {
+    const href = (navItem.match(/href="([^"]+)"/i) || [])[1];
+    const html = decode(files[normalizePath(opfDir + href)] || files[normalizePath(href)]);
+    if (html) collectNav(html, map, opfDir);
+  } else if (ncxItem) {
+    const href = (ncxItem.match(/href="([^"]+)"/i) || [])[1];
+    const xml = decode(files[normalizePath(opfDir + href)] || files[normalizePath(href)]);
+    if (xml) collectNcx(xml, map, opfDir);
+  }
+  return map;
+}
+function collectNav(html, map, opfDir) {
+  const navMatch =
+    html.match(/<nav\b[^>]*epub:type="[^"]*toc[^"]*"[^>]*>([\s\S]*?)<\/nav>/i) ||
+    html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/i);
+  const body = navMatch ? navMatch[1] : html;
+  const aRe = /<a\b[^>]*href="([^"#][^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = aRe.exec(body))) {
+    // 目录链接相对于 nav 文档所在目录（通常即 OPF 目录），解析后与章节 fullKey 对齐
+    const href = normalizePath(joinPath(opfDir, m[1].split('#')[0]));
+    const label = m[2].replace(/<[^>]+>/g, '').trim() || '章节';
+    if (!map.has(href)) map.set(href, label);
+  }
+}
+function collectNcx(xml, map, opfDir) {
+  const npRe = /<navPoint\b[^>]*>([\s\S]*?)<\/navPoint>/gi;
+  let m;
+  while ((m = npRe.exec(xml))) {
+    const np = m[1];
+    const text = (np.match(/<text>([\s\S]*?)<\/text>/i) || [])[1] || '';
+    const src = (np.match(/<content\s+src="([^"]+)"/i) || [])[1] || '';
+    if (src) {
+      const href = normalizePath(joinPath(opfDir, src.split('#')[0]));
+      const label = text.replace(/<[^>]+>/g, '').trim() || '章节';
+      if (!map.has(href)) map.set(href, label);
+    }
+  }
+}
+
+function extractBody(html) {
+  const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let body = m ? m[1] : html;
+  body = body
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/<link\b[^>]*>/gi, '')
+    .replace(/<meta\b[^>]*>/gi, '');
+  return body;
+}
+function sanitize(html) {
+  return html
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+    .replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+}
+function findTitle(html, tocMap, fullKey, idx) {
+  if (tocMap.has(fullKey)) return tocMap.get(fullKey);
+  const h = html.match(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/i);
+  if (h) return h[1].replace(/<[^>]+>/g, '').trim();
+  return '第 ' + (idx + 1) + ' 节';
+}
+
+function inlineImages(html, opfDir, files) {
+  const imgRe = /<img\b[^>]*src="([^"]+)"[^>]*>/gi;
+  let m;
+  let result = '';
+  let last = 0;
+  while ((m = imgRe.exec(html))) {
+    const src = m[1];
+    let replacement = m[0];
+    if (!/^(https?:|data:)/i.test(src)) {
+      const abs = normalizePath(joinPath(opfDir, src));
+      const data = files[abs];
+      if (data) {
+        const mime = mimeFromName(src);
+        const b64 = bytesToBase64(data);
+        replacement = m[0].replace(src, 'data:' + mime + ';base64,' + b64);
+      }
+    }
+    result += html.slice(last, m.index) + replacement;
+    last = m.index + m[0].length;
+  }
+  result += html.slice(last);
+  return result;
+}
+function joinPath(base, rel) {
+  if (/^(https?:|data:)/i.test(rel)) return rel;
+  const b = base.replace(/\/$/, '');
+  let parts = (b ? b.split('/') : []).concat(rel.split('/'));
+  const stack = [];
+  for (const part of parts) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') stack.pop();
+    else stack.push(part);
+  }
+  return stack.join('/');
+}
+function mimeFromName(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  return (
+    { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp' }[ext] || 'image/png'
+  );
+}
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+// ---------------- PDF ----------------
+export async function parsePdf(file) {
+  const data = await file.arrayBuffer();
+  const uint8 = new Uint8Array(data);
+  const doc = await openPdf(uint8);
+  const numPages = doc.numPages;
+  const chapters = [];
+  for (let i = 0; i < numPages; i++) chapters.push({ title: `第 ${i + 1} 页`, isPdfPage: true, pageIndex: i });
+
+  // 目录：把 outline 条目的真实页码映射成章节标题（best-effort）
+  try {
+    const outline = (await doc.getOutline()) || [];
+    for (const n of outline) {
+      if (!n || !n.title) continue;
+      let pageIdx = null;
+      try {
+        if (n.dest) {
+          const d = await doc.getDestination(n.dest);
+          if (d && d[0]) pageIdx = await doc.getPageIndex(d[0]);
+        }
+      } catch (e) {}
+      if (pageIdx != null && pageIdx >= 0 && pageIdx < chapters.length) {
+        chapters[pageIdx].title = String(n.title).trim();
+      }
+    }
+  } catch (e) {}
+
+  let info = {};
+  try { info = (await doc.getMetadata()).info || {}; } catch (e) {}
+  const title = (info.Title && String(info.Title).trim()) || file.name.replace(/\.pdf$/i, '');
+  const author = info.Author ? String(info.Author).trim() : '';
+  await doc.destroy();
+
+  return {
+    id: 'pdf-' + hash(title + Date.now()),
+    title,
+    author,
+    source: 'pdf',
+    numPages,
+    pdfBytes: uint8, // 原始字节存本地，阅读时再按需渲染
+    chapters,
+  };
+}

@@ -1,0 +1,10 @@
+node_modules
+android
+.idea
+*.log
+.git
+.gitignore
+package-lock.json
+package.json
+capacitor.config.json
+.DS_Store

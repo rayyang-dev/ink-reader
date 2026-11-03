@@ -1,0 +1,19 @@
+{
+  "name": "砚白 Inkstone",
+  "short_name": "砚白",
+  "description": "本地优先、墨水屏优化的极简阅读器",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f5ef",
+  "theme_color": "#f6f5ef",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
