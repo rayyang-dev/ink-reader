@@ -9,6 +9,9 @@ import { paginateChapter, chapterCharCount } from './paginate.js';
 import { parseTxt, parseEpub, parsePdf, parseMobi } from './importers.js';
 import { openPdf, renderPdfPage } from './pdfview.js';
 import { translateText } from './translate.js';
+import {
+  aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiTags, aiBilingual, pageParagraphs, renderMarkdown,
+} from './ai.js';
 import { SAMPLE_BOOK } from '../books/sample.js';
 
 const FONT_STACK = {
@@ -74,6 +77,7 @@ function syncSettingsUI() {
   $('set-tkey').value = settings.translateApiKey || '';
   $('set-tbase').value = settings.translateLlmBase || 'https://api.openai.com/v1';
   $('set-tmodel').value = settings.translateLlmModel || 'gpt-4o-mini';
+  $('set-ai-auto').checked = !!settings.aiAutoSummary;
   updateTranslateFieldsVisibility();
 }
 
@@ -88,30 +92,71 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+let activeTagFilter = null;
+
 async function renderShelf() {
   const list = await listBooksMeta();
   const el = $('book-list');
   const empty = $('shelf-empty');
   const hint = $('drop-hint');
+  const filter = $('tag-filter');
   el.innerHTML = '';
   if (!list.length) {
     el.classList.add('hidden');
     empty.classList.remove('hidden');
     hint.classList.add('hidden');
+    filter.classList.add('hidden');
+    filter.innerHTML = '';
     return;
   }
   el.classList.remove('hidden');
   empty.classList.add('hidden');
   hint.classList.remove('hidden');
-  for (const b of list) {
+
+  // 顶部标签筛选条：汇总所有书的 AI 标签
+  const tagCount = new Map();
+  list.forEach((b) => (b.aiTags || []).forEach((t) => tagCount.set(t, (tagCount.get(t) || 0) + 1)));
+  if (tagCount.size) {
+    filter.classList.remove('hidden');
+    filter.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'tag-chip' + (activeTagFilter === null ? ' active' : '');
+    allBtn.textContent = '全部';
+    allBtn.addEventListener('click', () => { activeTagFilter = null; renderShelf(); });
+    filter.appendChild(allBtn);
+    Array.from(tagCount.keys()).forEach((t) => {
+      const c = document.createElement('button');
+      c.className = 'tag-chip' + (activeTagFilter === t ? ' active' : '');
+      c.textContent = t;
+      c.addEventListener('click', () => { activeTagFilter = t; renderShelf(); });
+      filter.appendChild(c);
+    });
+  } else {
+    filter.classList.add('hidden');
+    filter.innerHTML = '';
+  }
+
+  const shown = activeTagFilter ? list.filter((b) => (b.aiTags || []).includes(activeTagFilter)) : list;
+  if (!shown.length) {
+    el.innerHTML = '<p class="empty-tip">该标签下暂无书籍。</p>';
+    return;
+  }
+
+  for (const b of shown) {
     const card = document.createElement('div');
     card.className = 'book-card';
     const coverChar = (b.title || '?').trim().charAt(0) || '?';
+    const tagsHtml = (b.aiTags && b.aiTags.length)
+      ? `<div class="bc-tags">${b.aiTags.map((t) => `<span class="tag-chip sm">${escapeHtml(t)}</span>`).join('')}</div>`
+      : '';
+    const aiLabel = (b.aiTags && b.aiTags.length) ? '重做归类' : 'AI 归类';
     card.innerHTML =
       `<div class="bc-cover">${escapeHtml(coverChar)}</div>` +
       `<div class="bc-body">` +
         `<div class="bc-title">${escapeHtml(b.title)}</div>` +
         `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
+        tagsHtml +
+        `<button class="bc-ai-btn" data-ai="${b.id}">${aiLabel}</button>` +
       `</div>` +
       `<div class="bc-del" data-del="${b.id}">删除</div>`;
     card.addEventListener('click', () => openBook(b.id));
@@ -119,10 +164,39 @@ async function renderShelf() {
       e.stopPropagation();
       if (confirm(`确定从本机删除《${b.title}》？此操作不可恢复。`)) {
         await deleteBook(b.id);
+        activeTagFilter = null;
         renderShelf();
       }
     });
+    const aiEl = card.querySelector('.bc-ai-btn');
+    aiEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await categorizeBook(b.id, aiEl);
+    });
     el.appendChild(card);
+  }
+}
+
+async function categorizeBook(id, el) {
+  if (!aiConfigured()) {
+    alert('请先在「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key，才能自动归类。');
+    return;
+  }
+  const original = el.textContent;
+  el.textContent = '归类中…';
+  el.classList.add('busy');
+  try {
+    const book = await getBook(id);
+    if (!book) throw new Error('书籍数据缺失');
+    const tags = await aiTags(book);
+    book.ai = Object.assign({}, book.ai, { tags });
+    await putBook(book);
+    activeTagFilter = null;
+    await renderShelf();
+  } catch (e) {
+    alert('AI 归类失败：' + e.message);
+    el.textContent = original;
+    el.classList.remove('busy');
   }
 }
 
@@ -130,11 +204,24 @@ async function importBook(book) {
   try {
     await putBook(book);
     await renderShelf();
+    maybeAutoSummary(book);
     return true;
   } catch (e) {
     alert('导入失败：' + e.message);
     return false;
   }
+}
+
+// 导入后若已配置 AI 且开启自动导读，则在后台静默生成全书导读并缓存到本书（失败不影响阅读）。
+function maybeAutoSummary(book) {
+  if (!settings.aiAutoSummary || !aiConfigured()) return;
+  (async () => {
+    try {
+      const { summary, guide } = await aiSummary(book, { type: 'book' });
+      book.ai = Object.assign({}, book.ai, { summary, guide });
+      await putBook(book);
+    } catch (e) { /* 自动生成失败静默忽略 */ }
+  })();
 }
 
 // ---------- 阅读 ----------
@@ -311,8 +398,9 @@ function closePanels() {
 // ---------- 选中文字翻译 ----------
 let lastSelText = '';
 function hideTranslate() {
-  $('translate-fab').classList.add('hidden');
+  $('sel-bar').classList.add('hidden');
   $('translate-pop').classList.add('hidden');
+  $('ai-explain-pop').classList.add('hidden');
 }
 function translateProviderLabel(p) {
   return ({ none: '关闭', mock: '演示', deepl: 'DeepL', google: 'Google', llm: 'AI' })[p] || p;
@@ -331,36 +419,35 @@ function selectionRect() {
   if (!rect || (rect.width === 0 && rect.height === 0)) return null;
   return rect;
 }
-function showTranslateFab(rect) {
-  const fab = $('translate-fab');
+function showSelBar(rect) {
+  const bar = $('sel-bar');
   const r = $('reader').getBoundingClientRect();
-  let left = rect.left - r.left + rect.width / 2 - 18;
-  let top = rect.top - r.top - 34;
-  if (top < 44) top = rect.bottom - r.top + 8;
-  fab.style.left = Math.max(8, left) + 'px';
-  fab.style.top = Math.max(44, top) + 'px';
-  fab.classList.remove('hidden');
+  // 固定在底部居中、刚好在底栏之上，避免压住选中文字（墨水屏上压字尤其碍眼）
+  bar.style.top = '';
+  bar.style.bottom = '52px';
+  bar.style.left = Math.max(8, r.width / 2 - bar.offsetWidth / 2) + 'px';
+  bar.classList.remove('hidden');
 }
 function onSelectEnd() {
   const pop = $('translate-pop');
-  if (!pop.classList.contains('hidden')) return; // 弹层开着时不抢焦点
+  const epop = $('ai-explain-pop');
+  if (!pop.classList.contains('hidden') || !epop.classList.contains('hidden')) return; // 弹层开着时不抢焦点
   if ($('reader').classList.contains('hidden')) { hideTranslate(); return; }
   const t = (window.getSelection() && window.getSelection().toString().trim()) || '';
   if (!t) { hideTranslate(); lastSelText = ''; return; }
   lastSelText = t;
   const rect = selectionRect();
   if (!rect) { hideTranslate(); return; }
-  pop.classList.add('hidden');
-  showTranslateFab(rect);
+  showSelBar(rect);
 }
 async function doTranslate(text) {
   const pop = $('translate-pop');
+  $('sel-bar').classList.add('hidden');
   pop.classList.remove('hidden');
   $('translate-dir').textContent = '翻译中…';
   $('translate-result').textContent = '';
   $('translate-swap').classList.add('hidden');
   $('translate-copy').classList.add('hidden');
-  $('translate-fab').classList.add('hidden');
   const opts = {
     provider: settings.translateProvider,
     apiKey: settings.translateApiKey,
@@ -383,8 +470,10 @@ async function doTranslate(text) {
 function initTranslateSelection() {
   document.addEventListener('mouseup', () => setTimeout(onSelectEnd, 0));
   document.addEventListener('touchend', () => setTimeout(onSelectEnd, 0));
-  $('translate-fab').addEventListener('click', () => { if (lastSelText) doTranslate(lastSelText); });
+  $('sel-translate').addEventListener('click', () => { if (lastSelText) doTranslate(lastSelText); });
+  $('sel-ai').addEventListener('click', () => { if (lastSelText) doExplain(lastSelText); });
   $('translate-close').addEventListener('click', hideTranslate);
+  $('ai-explain-close').addEventListener('click', hideTranslate);
   $('translate-copy').addEventListener('click', () => {
     const t = $('translate-result').textContent;
     if (t && navigator.clipboard) navigator.clipboard.writeText(t).catch(() => {});
@@ -393,6 +482,41 @@ function initTranslateSelection() {
     const t = $('translate-result').textContent;
     if (t) doTranslate(t); // 对译文再译一次（自动识别语言即反向）
   });
+}
+
+// 选中即问：调用 AI 解释选中内容，结果展示在独立弹层
+async function doExplain(text) {
+  const pop = $('ai-explain-pop');
+  $('sel-bar').classList.add('hidden');
+  if (!aiConfigured()) {
+    pop.classList.remove('hidden');
+    $('ai-explain-text').innerHTML =
+      '<p class="empty-tip">尚未配置 AI 引擎。请到「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key。</p>';
+    return;
+  }
+  pop.classList.remove('hidden');
+  $('ai-explain-text').textContent = 'AI 思考中…';
+  try {
+    const ctx = currentBook ? await buildBookContext(currentBook, 2500) : '';
+    const out = await aiExplain(text, currentBook, ctx);
+    $('ai-explain-text').textContent = out;
+  } catch (e) {
+    $('ai-explain-text').textContent = e.message;
+  }
+}
+
+// 取书籍摘要文本作为解释/问答的上下文（复用 ai.js 的 buildDigest 思路，这里轻量实现避免循环依赖）
+async function buildBookContext(book, budget) {
+  const titles = book.chapters.map((c) => c.title || '').filter(Boolean).join(' / ');
+  let text = '';
+  for (const ch of book.chapters) {
+    if (text.length >= budget) break;
+    const d = document.createElement('div');
+    d.innerHTML = ch.html || '';
+    const t = (d.textContent || '').replace(/\s+/g, ' ').trim();
+    text += (text ? '\n' : '') + (ch.title ? '【' + ch.title + '】' : '') + t.slice(0, Math.max(0, budget - text.length - 40));
+  }
+  return '目录：' + titles + '\n\n正文摘录：\n' + text;
 }
 function buildToc() {
   const list = $('toc-list');
@@ -447,6 +571,127 @@ function addBookmark() {
   m[currentBook.id].push({ ci, pi, label, at: Date.now() });
   saveBookmarks(m);
   buildBookmarks();
+}
+
+// ---------- AI 面板逻辑 ----------
+function loadCachedGuide() {
+  if (!currentBook) return;
+  const ai = currentBook.ai || {};
+  const out = $('ai-guide-out');
+  if (ai.summary || ai.guide) {
+    out.innerHTML = renderMarkdown(
+      (ai.summary ? '## 内容概要\n' + ai.summary + '\n\n' : '') + (ai.guide || '')
+    );
+  } else {
+    out.innerHTML = '<p class="empty-tip">本书暂无导读。点上方按钮生成（需配置 AI 引擎）。</p>';
+  }
+}
+
+async function genGuide(scopeType) {
+  if (!currentBook) return;
+  if (!aiConfigured()) { alert('请先在「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key。'); return; }
+  const out = $('ai-guide-out');
+  const btn = scopeType === 'chapter' ? $('ai-gen-guide-ch') : $('ai-gen-guide');
+  const prev = btn.textContent;
+  btn.textContent = '生成中…'; btn.disabled = true;
+  out.innerHTML = '<p class="empty-tip">AI 生成中…</p>';
+  try {
+    const scope = scopeType === 'chapter' ? { type: 'chapter', index: ci } : { type: 'book' };
+    const r = await aiSummary(currentBook, scope);
+    if (scopeType === 'book') {
+      currentBook.ai = Object.assign({}, currentBook.ai, { summary: r.summary, guide: r.guide });
+      await putBook(currentBook);
+    }
+    const body = (scopeType === 'book' && r.summary ? '## 内容概要\n' + r.summary + '\n\n' : '') + r.guide;
+    out.innerHTML = renderMarkdown(body);
+  } catch (e) {
+    out.innerHTML = '<p class="empty-tip">生成失败：' + e.message + '</p>';
+  } finally {
+    btn.textContent = prev; btn.disabled = false;
+  }
+}
+
+async function askQuestion() {
+  if (!currentBook) return;
+  const q = $('ai-qa-question').value.trim();
+  if (!q) { alert('请输入你的问题'); return; }
+  if (!aiConfigured()) { alert('请先在「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key。'); return; }
+  const out = $('ai-qa-out');
+  const item = document.createElement('div');
+  item.className = 'qa-item';
+  item.innerHTML = '<div class="qa-q">' + escapeHtml(q) + '</div><div class="qa-a">AI 思考中…</div>';
+  out.prepend(item);
+  const aEl = item.querySelector('.qa-a');
+  try {
+    const ans = await aiAsk(q, currentBook);
+    aEl.innerHTML = renderMarkdown(ans);
+    currentBook.ai = Object.assign({}, currentBook.ai, {
+      qa: (currentBook.ai && currentBook.ai.qa ? currentBook.ai.qa : []).concat([{ q, a: ans }]),
+    });
+    await putBook(currentBook);
+  } catch (e) {
+    aEl.textContent = '失败：' + e.message;
+  }
+}
+
+async function genNotes() {
+  if (!currentBook) return;
+  if (!aiConfigured()) { alert('请先在「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key。'); return; }
+  const out = $('ai-notes-out');
+  out.innerHTML = '<p class="empty-tip">AI 生成中…</p>';
+  try {
+    const n = await aiNotes(currentBook);
+    currentBook.ai = Object.assign({}, currentBook.ai, { notes: n });
+    await putBook(currentBook);
+    out.innerHTML = renderNotes(n);
+  } catch (e) {
+    out.innerHTML = '<p class="empty-tip">生成失败：' + e.message + '</p>';
+  }
+}
+function renderNotes(n) {
+  let h = '';
+  if (n.characters && n.characters.length) {
+    h += '<h4>人物 / 实体</h4><div class="note-cards">';
+    n.characters.forEach((c) => {
+      h += '<div class="note-card"><div class="nc-title">' + escapeHtml(c.name || '') + '</div>' +
+        (c.role ? '<div class="nc-role">' + escapeHtml(c.role) + '</div>' : '') +
+        (c.relation ? '<div class="nc-rel">' + escapeHtml(c.relation) + '</div>' : '') + '</div>';
+    });
+    h += '</div>';
+  }
+  if (n.timeline && n.timeline.length) {
+    h += '<h4>关键脉络</h4><ul class="note-list">';
+    n.timeline.forEach((t) => { h += '<li><b>' + escapeHtml(t.point || '') + '</b> ' + escapeHtml(t.desc || '') + '</li>'; });
+    h += '</ul>';
+  }
+  if (n.points && n.points.length) {
+    h += '<h4>核心要点</h4><ul class="note-list">';
+    n.points.forEach((p) => { h += '<li>' + escapeHtml(p) + '</li>'; });
+    h += '</ul>';
+  }
+  return h || '<p class="empty-tip">未能生成笔记。</p>';
+}
+
+async function genBilingual() {
+  if (!currentBook) return;
+  if (settings.translateProvider === 'none') {
+    alert('请先在「AI 引擎」选择翻译引擎（演示 / DeepL / Google / AI 大模型）。');
+    return;
+  }
+  const out = $('ai-bilingual-out');
+  out.innerHTML = '<p class="empty-tip">逐段翻译中…</p>';
+  try {
+    const paras = pageParagraphs(pages[pi] || '');
+    const rows = await aiBilingual(paras, settings.translateDir);
+    let h = '';
+    rows.forEach((r) => {
+      h += '<div class="bi-row"><div class="bi-orig">' + escapeHtml(r.orig) + '</div>' +
+        (r.trans ? '<div class="bi-trans">' + escapeHtml(r.trans) + '</div>' : '') + '</div>';
+    });
+    out.innerHTML = h || '<p class="empty-tip">本页无可翻译内容。</p>';
+  } catch (e) {
+    out.innerHTML = '<p class="empty-tip">双语生成失败：' + e.message + '</p>';
+  }
 }
 
 // ---------- 设置变更 ----------
@@ -557,8 +802,22 @@ function bindEvents() {
   $('btn-toc').addEventListener('click', () => openPanel('panel-toc'));
   $('btn-toc-top').addEventListener('click', () => openPanel('panel-toc'));
   $('btn-bookmark').addEventListener('click', () => { buildBookmarks(); openPanel('panel-bookmark'); });
+  $('btn-ai').addEventListener('click', () => { openPanel('panel-ai'); loadCachedGuide(); });
   $('btn-settings').addEventListener('click', () => openPanel('panel-settings'));
   $('bm-add').addEventListener('click', addBookmark);
+
+  // AI 面板：tab 切换
+  document.querySelectorAll('.ai-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.ai-tab').forEach((x) => x.classList.toggle('active', x === b));
+      document.querySelectorAll('.ai-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== b.dataset.aiTab));
+    });
+  });
+  $('ai-gen-guide').addEventListener('click', () => genGuide('book'));
+  $('ai-gen-guide-ch').addEventListener('click', () => genGuide('chapter'));
+  $('ai-qa-ask').addEventListener('click', askQuestion);
+  $('ai-gen-notes').addEventListener('click', genNotes);
+  $('ai-bilingual-gen').addEventListener('click', genBilingual);
   $('panel-mask').addEventListener('click', closePanels);
   document.querySelectorAll('.panel-close').forEach((b) =>
     b.addEventListener('click', closePanels)
@@ -623,6 +882,9 @@ function bindEvents() {
   $('seg-tdir').addEventListener('click', (e) => {
     const v = e.target.dataset.val; if (!v) return;
     settings.translateDir = v; saveSettings(settings); setSeg('seg-tdir', v);
+  });
+  $('set-ai-auto').addEventListener('change', (e) => {
+    settings.aiAutoSummary = e.target.checked; saveSettings(settings);
   });
   initTranslateSelection();
 

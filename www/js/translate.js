@@ -1,6 +1,9 @@
 // 中英互译（可插拔后端，API Key 仅存本机 localStorage，离线阅读不受影响）
 // 提供：mock（离线演示）/ DeepL / Google Translate / 兼容 OpenAI 的 AI 大模型
 // 设计原则：默认不联网；只有用户显式选择某提供方并填入 Key 后才会发起网络请求。
+// 注：AI 大模型（llm）这条路走 js/llm.js 的统一客户端，与摘要/问答/笔记共用同一套 Key/模型配置。
+
+import { llmChat } from './llm.js';
 
 export const TRANSLATE_PROVIDERS = [
   { val: 'none', label: '关闭' },
@@ -89,27 +92,20 @@ async function googleTranslate(text, from, to, key) {
 }
 
 async function llmTranslate(text, from, to, key, baseUrl, model) {
-  const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const fromName = from === 'zh' ? 'Chinese' : 'English';
   const toName = to === 'zh' ? 'Chinese' : 'English';
   const sys =
     'You are a translation engine. Translate the user text from ' + fromName + ' to ' + toName +
     '. Output ONLY the translated text, with no explanations, no quotes, no markdown.';
-  const res = await fetch(base + '/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: model || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: sys },
-        { role: 'user', content: text },
-      ],
-      temperature: 0.2,
-    }),
+  const content = await llmChat({
+    baseUrl: baseUrl || 'https://api.openai.com/v1',
+    apiKey: key,
+    model: model || 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: text },
+    ],
+    temperature: 0.2,
   });
-  if (!res.ok) throw new Error('AI 接口返回 ' + res.status);
-  const data = await res.json();
-  const t = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-  if (!t) throw new Error('AI 接口返回格式异常');
-  return { text: t.trim(), from, to, provider: 'llm' };
+  return { text: content.trim(), from, to, provider: 'llm' };
 }

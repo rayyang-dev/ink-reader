@@ -72,16 +72,20 @@ function idbGetAll(db) {
     r.onerror = () => reject(r.error);
   });
 }
+function metaOf(b) {
+  return {
+    id: b.id,
+    title: b.title,
+    author: b.author || '',
+    source: b.source,
+    addedAt: b.addedAt,
+    chaptersCount: (b.chapters || []).length,
+    aiTags: (b.ai && Array.isArray(b.ai.tags) && b.ai.tags) || [],
+  };
+}
 function memMetaList() {
   return Array.from(memBooks.values())
-    .map((b) => ({
-      id: b.id,
-      title: b.title,
-      author: b.author || '',
-      source: b.source,
-      addedAt: b.addedAt,
-      chaptersCount: (b.chapters || []).length,
-    }))
+    .map(metaOf)
     .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 }
 
@@ -127,14 +131,7 @@ export async function listBooksMeta() {
     const db = await openDB();
     const all = await idbGetAll(db);
     return all
-      .map((b) => ({
-        id: b.id,
-        title: b.title,
-        author: b.author || '',
-        source: b.source,
-        addedAt: b.addedAt,
-        chaptersCount: (b.chapters || []).length,
-      }))
+      .map(metaOf)
       .concat(memMetaList())
       .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
   } catch (e) {
@@ -182,12 +179,13 @@ export const DEFAULT_SETTINGS = {
   paragraphSpacing: 0.7,
   firstLineIndent: true,
   regalRefresh: 6,
-  // 翻译（默认关闭，不影响离线阅读；启用后仅在使用时联网）
+  // AI 引擎（翻译/摘要/问答/标签/笔记/双语 共用的 Key 与模型配置；默认关闭，不影响离线阅读）
   translateProvider: 'none',
   translateApiKey: '',
   translateLlmBase: 'https://api.openai.com/v1',
   translateLlmModel: 'gpt-4o-mini',
   translateDir: 'auto',
+  aiAutoSummary: true, // 导入书籍且已配置 AI 时，自动在后台生成导读/摘要并缓存到本书
 };
 
 export function loadSettings() {

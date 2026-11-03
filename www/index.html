@@ -34,6 +34,7 @@
         <input type="file" id="file-pdf" accept=".pdf,application/pdf" hidden />
         <input type="file" id="file-mobi" accept=".mobi,.azw,application/x-mobipocket-ebook" hidden />
       </div>
+      <div id="tag-filter" class="tag-filter hidden"></div>
       <div id="book-list" class="book-list"></div>
       <div id="shelf-empty" class="shelf-empty hidden">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -68,6 +69,7 @@
         <span class="bar-sep"></span>
         <div class="bb-group bb-tools">
           <button id="btn-bookmark" class="icon-btn">书签</button>
+          <button id="btn-ai" class="icon-btn">AI</button>
           <button id="btn-toc" class="icon-btn">目录</button>
           <button id="btn-settings" class="icon-btn">设置</button>
         </div>
@@ -159,10 +161,10 @@
           </div>
 
           <div class="settings-group">
-            <div class="group-title">翻译</div>
+            <div class="group-title">AI 引擎</div>
             <div class="group-body">
               <div class="field">
-                <label>翻译引擎（中英互译，默认关闭）</label>
+                <label>AI 引擎（翻译 / 摘要 / 问答 / 标签 / 笔记 共用）</label>
                 <div class="seg c5" id="seg-translate-provider">
                   <button data-val="none">关闭</button>
                   <button data-val="mock">演示</button>
@@ -181,26 +183,68 @@
                 <input type="text" id="set-tmodel" placeholder="模型名，如 gpt-4o-mini" autocomplete="off" />
               </div>
               <div class="field">
-                <label>默认方向</label>
+                <label>默认翻译方向</label>
                 <div class="seg" id="seg-tdir">
                   <button data-val="auto">自动</button>
                   <button data-val="zh2en">中→英</button>
                   <button data-val="en2zh">英→中</button>
                 </div>
               </div>
+              <div class="field">
+                <label class="switch"><input type="checkbox" id="set-ai-auto" /> 导入后自动生成导读</label>
+              </div>
             </div>
-            <p class="hint group-hint">翻译默认关闭，不影响离线阅读。启用后，在阅读页选中文字即可「译」。API Key 仅保存在本机，不会上传到任何服务器（本应用无服务器）。AI 大模型支持任意 OpenAI 兼容接口（如 DeepSeek / 通义 / 本地 Ollama）。</p>
+            <p class="hint group-hint">AI 引擎默认关闭，不影响离线阅读。启用「AI 大模型」并填 Key 后，阅读页可选中文字「译 / 解释」、打开「AI 助手」生成全书或本章导读、书中问答、人物脉络笔记、智能书架标签、段落双语对照。API Key 仅存本机，本应用无服务器；支持任意 OpenAI 兼容接口（DeepSeek / 通义 / 本地 Ollama）。</p>
           </div>
 
         </div>
       </aside>
+
+      <aside id="panel-ai" class="panel">
+        <div class="panel-head"><span>AI 助手</span><button class="panel-close" data-close="panel-ai">✕</button></div>
+        <div class="ai-tabs">
+          <button class="ai-tab active" data-ai-tab="guide">导读</button>
+          <button class="ai-tab" data-ai-tab="qa">问答</button>
+          <button class="ai-tab" data-ai-tab="notes">笔记</button>
+          <button class="ai-tab" data-ai-tab="bilingual">双语</button>
+        </div>
+        <div class="ai-body">
+          <div class="ai-pane" data-pane="guide">
+            <p class="ai-hint">基于本书内容生成「内容概要 + 阅读导读」。已生成的导读会缓存到本书，离线也能再看。</p>
+            <button id="ai-gen-guide" class="btn btn-block">生成全书导读</button>
+            <button id="ai-gen-guide-ch" class="btn btn-block subtle">生成本章导读</button>
+            <div id="ai-guide-out" class="ai-markdown"></div>
+          </div>
+          <div class="ai-pane hidden" data-pane="qa">
+            <div class="ai-qa-input">
+              <textarea id="ai-qa-question" placeholder="就本书提问，例如：主角的动机是什么？这一章讲了什么？"></textarea>
+              <button id="ai-qa-ask" class="btn btn-block">提问</button>
+            </div>
+            <div id="ai-qa-out" class="ai-qa-list"></div>
+          </div>
+          <div class="ai-pane hidden" data-pane="notes">
+            <p class="ai-hint">抽取人物关系、关键脉络与核心要点，生成结构化阅读笔记。</p>
+            <button id="ai-gen-notes" class="btn btn-block">生成阅读笔记</button>
+            <div id="ai-notes-out"></div>
+          </div>
+          <div class="ai-pane hidden" data-pane="bilingual">
+            <p class="ai-hint">把当前页拆成段落，逐段翻译成中文/英文对照（依赖上面的翻译方向设置）。</p>
+            <button id="ai-bilingual-gen" class="btn btn-block">本页双语对照</button>
+            <div id="ai-bilingual-out"></div>
+          </div>
+        </div>
+      </aside>
+
       <div id="panel-mask" class="panel-mask"></div>
 
       <!-- Regal 整屏清残影闪光 -->
       <div id="refresh-flash" class="refresh-flash"></div>
 
-      <!-- 选中文字翻译 -->
-      <button id="translate-fab" class="hidden">译</button>
+      <!-- 选中文字：工具条（译 / AI 解释） -->
+      <div id="sel-bar" class="sel-bar hidden">
+        <button id="sel-translate">译</button>
+        <button id="sel-ai">AI 解释</button>
+      </div>
       <div id="translate-pop" class="hidden">
         <div class="tp-row">
           <span id="translate-dir" class="tp-dir"></span>
@@ -211,6 +255,13 @@
           <button id="translate-copy" class="hidden">复制</button>
           <button id="translate-close">关闭</button>
         </div>
+      </div>
+      <div id="ai-explain-pop" class="hidden">
+        <div class="tp-row">
+          <span class="tp-dir">AI 解释</span>
+          <button id="ai-explain-close">关闭</button>
+        </div>
+        <div id="ai-explain-text"></div>
       </div>
     </section>
 

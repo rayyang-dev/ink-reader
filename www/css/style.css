@@ -541,18 +541,28 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
   box-sizing: border-box;
 }
 
-/* 选中即译：浮动「译」按钮 + 结果弹层 */
-#translate-fab {
+/* 选中文字工具条：译 / AI 解释（两个并列高对比按钮） */
+.sel-bar {
   position: absolute;
   z-index: 25;
-  background: var(--accent);
-  color: #fff;
+  display: flex;
+  gap: 0;
+  background: var(--bar-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sel-bar button {
   border: none;
-  border-radius: 8px;
-  padding: 6px 13px;
-  font-size: 13px;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 14px;
+  padding: 8px 16px;
   cursor: pointer;
 }
+.sel-bar button + button { border-left: 1px solid var(--border); }
+.sel-bar button:active { background: var(--fg); color: var(--bg); }
+.sel-bar button:first-child:active { background: var(--accent); color: #fff; }
 #translate-pop {
   position: absolute;
   z-index: 25;
@@ -581,6 +591,151 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
 }
 #translate-pop button:active { background: var(--fg); color: var(--bg); }
 #translate-result { white-space: pre-wrap; word-break: break-word; }
+
+/* AI 解释弹层（与翻译弹层同形） */
+#ai-explain-pop {
+  position: absolute;
+  z-index: 25;
+  left: 12px;
+  right: 12px;
+  bottom: 50px;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-size: 14px;
+  line-height: 1.65;
+  max-height: 60%;
+  overflow-y: auto;
+}
+#ai-explain-pop .tp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#ai-explain-pop .tp-dir { font-size: 12px; color: var(--fg-soft); }
+#ai-explain-pop button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--bar-fg);
+  border-radius: 7px;
+  font-size: 12px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+#ai-explain-pop button:active { background: var(--fg); color: var(--bg); }
+#ai-explain-text { white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- AI 面板 ---------- */
+.ai-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: var(--bar-bg);
+}
+.ai-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 14px;
+  padding: 13px 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.ai-tab.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
+.ai-tab:active { background: var(--fg); color: var(--bg); }
+.ai-body { padding: 14px 16px 40px; }
+.ai-hint { font-size: 12px; color: var(--fg-soft); line-height: 1.7; margin: 0 0 12px; }
+.ai-pane .btn-block { margin-bottom: 10px; }
+.btn.subtle { color: var(--fg-soft); }
+
+/* AI 生成的 Markdown 排版（在面板内） */
+.ai-markdown { font-size: 14px; line-height: 1.75; word-break: break-word; }
+.ai-markdown h2 { font-size: 16px; margin: 14px 0 8px; }
+.ai-markdown h3 { font-size: 15px; margin: 12px 0 7px; color: var(--accent); }
+.ai-markdown h4 { font-size: 14px; margin: 10px 0 6px; }
+.ai-markdown p { margin: 0 0 9px; }
+.ai-markdown ul { margin: 0 0 10px; padding-left: 20px; }
+.ai-markdown li { margin: 3px 0; }
+.ai-markdown b { font-weight: 700; }
+
+/* 问答 */
+.ai-qa-input { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.ai-qa-input textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.ai-qa-list { display: flex; flex-direction: column; gap: 12px; }
+.qa-item { border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+.qa-q { padding: 9px 12px; background: color-mix(in srgb, var(--accent) 14%, var(--bg)); font-weight: 600; font-size: 14px; }
+.qa-a { padding: 11px 12px; font-size: 14px; line-height: 1.7; }
+.qa-a p { margin: 0 0 8px; }
+.qa-a ul { margin: 0 0 8px; padding-left: 20px; }
+.qa-a li { margin: 2px 0; }
+.qa-a b { font-weight: 700; }
+
+/* 笔记卡片 */
+.note-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 12px; }
+.note-card { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 11px; }
+.note-card .nc-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+.note-card .nc-role { font-size: 12px; color: var(--fg-soft); }
+.note-card .nc-rel { font-size: 12px; color: var(--accent); margin-top: 3px; line-height: 1.5; }
+.note-list { padding-left: 20px; margin: 0 0 12px; }
+.note-list li { margin: 4px 0; font-size: 14px; line-height: 1.6; }
+.ai-markdown h4, #ai-notes-out h4 { color: var(--accent); }
+#ai-notes-out h4 { font-size: 14px; margin: 12px 0 6px; }
+#ai-notes-out ul { padding-left: 20px; margin: 0 0 12px; }
+#ai-notes-out li { margin: 4px 0; font-size: 14px; line-height: 1.6; }
+
+/* 双语对照 */
+.bi-row { border-bottom: 1px solid var(--hairline); padding: 9px 0; }
+.bi-row:last-child { border-bottom: none; }
+.bi-orig { font-size: 14px; line-height: 1.7; margin-bottom: 5px; }
+.bi-trans { font-size: 14px; line-height: 1.7; color: var(--fg-soft); border-left: 2px solid var(--accent); padding-left: 9px; }
+
+/* ---------- 书架标签 / 筛选 ---------- */
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.tag-chip {
+  border: 1px solid var(--hairline);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.tag-chip.active { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.tag-chip.sm { padding: 2px 9px; font-size: 11px; cursor: default; }
+.bc-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.bc-ai-btn {
+  margin-top: 10px;
+  align-self: flex-start;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+.bc-ai-btn:active { background: var(--accent); color: #fff; }
+.bc-ai-btn.busy { opacity: 0.6; }
+
 
 /* ---------- 移动端 / 手机优化 ---------- */
 @media (max-width: 480px) {
