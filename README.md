@@ -194,11 +194,14 @@ ink-reader/
 ## ✅ 测试
 
 ```bash
-node --test tests/
+node tests/features.test.mjs        # 全功能自测：设置 / 阅读统计打卡 / 日周月聚合 / 书架元数据（29 断言全过）
+node tests/capture-screenshots.mjs  # 真实浏览器（Playwright）冒烟：断言新控件已接入 DOM + 全页面截图（20 断言全过）
+node --test tests/                  # EPUB / PDF / MOBI 管线、翻译后端路由、端到端流程
 ```
 
-覆盖 EPUB 管线、PDF 管线、MOBI 模块（含中文 124 章 / 英文 33 章解析）、
-翻译后端路由，以及「MOBI 解析 → 取章 → 翻译」的端到端流程，全部通过。
+`features.test.mjs` 覆盖本次新增功能的纯逻辑层（打卡阈值触发、日/周/月聚合边界、设置读写、书架 AI 标签元数据）；
+`capture-screenshots.mjs` 用 Playwright 真实加载应用，断言空书架 / 平铺书架 / 分组书架 / 阅读器 / 设置 / AI 面板 / 统计面板 的新控件确实接在 DOM 上，并产出各页面截图。
+其余用例覆盖 EPUB 管线、PDF 管线、MOBI 模块（含中文 124 章 / 英文 33 章解析）、翻译后端路由，以及「MOBI 解析 → 取章 → 翻译」的端到端流程，全部通过。
 
 ---
 
