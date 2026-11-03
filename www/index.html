@@ -86,87 +86,112 @@
       <aside id="panel-settings" class="panel">
         <div class="panel-head"><span>阅读设置</span><button class="panel-close" data-close="panel-settings">✕</button></div>
         <div class="settings-body">
-          <div class="field">
-            <label>主题</label>
-            <div class="seg c5" id="seg-theme">
-              <button data-val="eink">墨水屏</button>
-              <button data-val="light">纸白</button>
-              <button data-val="sepia">护眼</button>
-              <button data-val="dark">夜间</button>
-              <button data-val="paper">纯白</button>
+
+          <div class="settings-group">
+            <div class="group-title">外观</div>
+            <div class="group-body">
+              <div class="field">
+                <label>主题</label>
+                <div class="seg c5" id="seg-theme">
+                  <button data-val="eink">墨水屏</button>
+                  <button data-val="light">纸白</button>
+                  <button data-val="sepia">护眼</button>
+                  <button data-val="dark">夜间</button>
+                  <button data-val="paper">纯白</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>字体</label>
+                <div class="seg" id="seg-font">
+                  <button data-val="serif">衬线</button>
+                  <button data-val="sans">黑体</button>
+                  <button data-val="mono">等宽</button>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="field">
-            <label>字体</label>
-            <div class="seg" id="seg-font">
-              <button data-val="serif">衬线</button>
-              <button data-val="sans">黑体</button>
-              <button data-val="mono">等宽</button>
+
+          <div class="settings-group">
+            <div class="group-title">排版</div>
+            <div class="group-body">
+              <div class="field">
+                <label>字号 <span id="val-fontsize"></span></label>
+                <input type="range" id="set-fontsize" min="16" max="32" step="1" />
+              </div>
+              <div class="field">
+                <label>行距 <span id="val-lineheight"></span></label>
+                <input type="range" id="set-lineheight" min="1.2" max="2.4" step="0.05" />
+              </div>
+              <div class="field">
+                <label>边距 <span id="val-margin"></span></label>
+                <input type="range" id="set-margin" min="8" max="56" step="1" />
+              </div>
+              <div class="field">
+                <label>段距 <span id="val-paraspacing"></span></label>
+                <input type="range" id="set-paraspacing" min="0" max="1.6" step="0.1" />
+              </div>
+              <div class="field">
+                <label>字间距 <span id="val-letterspacing"></span></label>
+                <input type="range" id="set-letterspacing" min="-1" max="4" step="0.5" />
+              </div>
+              <div class="field row">
+                <label class="switch"><input type="checkbox" id="set-justify" /> 两端对齐</label>
+                <label class="switch"><input type="checkbox" id="set-indent" /> 首行缩进</label>
+              </div>
             </div>
           </div>
-          <div class="field">
-            <label>字号 <span id="val-fontsize"></span></label>
-            <input type="range" id="set-fontsize" min="16" max="32" step="1" />
-          </div>
-          <div class="field">
-            <label>行距 <span id="val-lineheight"></span></label>
-            <input type="range" id="set-lineheight" min="1.2" max="2.4" step="0.05" />
-          </div>
-          <div class="field">
-            <label>边距 <span id="val-margin"></span></label>
-            <input type="range" id="set-margin" min="8" max="56" step="1" />
-          </div>
-          <div class="field">
-            <label>段距 <span id="val-paraspacing"></span></label>
-            <input type="range" id="set-paraspacing" min="0" max="1.6" step="0.1" />
-          </div>
-          <div class="field">
-            <label>字间距(px) <span id="val-letterspacing"></span></label>
-            <input type="range" id="set-letterspacing" min="-1" max="4" step="0.5" />
-          </div>
-          <div class="field row">
-            <label class="switch"><input type="checkbox" id="set-justify" /> 两端对齐</label>
-            <label class="switch"><input type="checkbox" id="set-indent" /> 首行缩进</label>
-          </div>
-          <div class="field">
-            <label>整屏刷新（墨水屏清残影）</label>
-            <div class="seg" id="seg-regal">
-              <button data-val="0">关闭</button>
-              <button data-val="1">每页</button>
-              <button data-val="3">每3页</button>
-              <button data-val="6">每6页</button>
-              <button data-val="12">每12页</button>
-              <button data-val="999">每章</button>
+
+          <div class="settings-group">
+            <div class="group-title">屏幕</div>
+            <div class="group-body">
+              <div class="field">
+                <label>整屏刷新（墨水屏清残影）</label>
+                <div class="seg" id="seg-regal">
+                  <button data-val="0">关闭</button>
+                  <button data-val="1">每页</button>
+                  <button data-val="3">每3页</button>
+                  <button data-val="6">每6页</button>
+                  <button data-val="12">每12页</button>
+                  <button data-val="999">每章</button>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="field">
-            <label>翻译（中英互译，默认关闭）</label>
-            <div class="seg c5" id="seg-translate-provider">
-              <button data-val="none">关闭</button>
-              <button data-val="mock">演示</button>
-              <button data-val="deepl">DeepL</button>
-              <button data-val="google">Google</button>
-              <button data-val="llm">AI 大模型</button>
+
+          <div class="settings-group">
+            <div class="group-title">翻译</div>
+            <div class="group-body">
+              <div class="field">
+                <label>翻译引擎（中英互译，默认关闭）</label>
+                <div class="seg c5" id="seg-translate-provider">
+                  <button data-val="none">关闭</button>
+                  <button data-val="mock">演示</button>
+                  <button data-val="deepl">DeepL</button>
+                  <button data-val="google">Google</button>
+                  <button data-val="llm">AI 大模型</button>
+                </div>
+              </div>
+              <div class="field" id="field-tkey">
+                <label>API Key（仅存本机）</label>
+                <input type="password" id="set-tkey" placeholder="填入对应提供方的 Key" autocomplete="off" />
+              </div>
+              <div class="field" id="field-tbase">
+                <label>AI 接口地址 / 模型</label>
+                <input type="text" id="set-tbase" placeholder="https://api.openai.com/v1" style="margin-bottom:8px" autocomplete="off" />
+                <input type="text" id="set-tmodel" placeholder="模型名，如 gpt-4o-mini" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label>默认方向</label>
+                <div class="seg" id="seg-tdir">
+                  <button data-val="auto">自动</button>
+                  <button data-val="zh2en">中→英</button>
+                  <button data-val="en2zh">英→中</button>
+                </div>
+              </div>
             </div>
+            <p class="hint group-hint">翻译默认关闭，不影响离线阅读。启用后，在阅读页选中文字即可「译」。API Key 仅保存在本机，不会上传到任何服务器（本应用无服务器）。AI 大模型支持任意 OpenAI 兼容接口（如 DeepSeek / 通义 / 本地 Ollama）。</p>
           </div>
-          <div class="field" id="field-tkey">
-            <label>API Key（仅存本机）</label>
-            <input type="password" id="set-tkey" placeholder="填入对应提供方的 Key" autocomplete="off" />
-          </div>
-          <div class="field" id="field-tbase">
-            <label>AI 接口地址 / 模型</label>
-            <input type="text" id="set-tbase" placeholder="https://api.openai.com/v1" style="margin-bottom:8px" autocomplete="off" />
-            <input type="text" id="set-tmodel" placeholder="模型名，如 gpt-4o-mini" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label>默认方向</label>
-            <div class="seg" id="seg-tdir">
-              <button data-val="auto">自动</button>
-              <button data-val="zh2en">中→英</button>
-              <button data-val="en2zh">英→中</button>
-            </div>
-          </div>
-          <p class="hint">翻译默认关闭，不影响离线阅读。启用后，在阅读页选中文字即可「译」。API Key 仅保存在本机，不会上传到任何阅读器服务器（本应用无服务器）。AI 大模型支持任意 OpenAI 兼容接口（如 DeepSeek / 通义 / 本地 Ollama）。</p>
+
         </div>
       </aside>
       <div id="panel-mask" class="panel-mask"></div>

@@ -71,20 +71,20 @@ body { background: var(--bg); color: var(--fg); }
 }
 
 /* 品牌区 */
-.shelf-head { margin-bottom: 22px; }
-.brand { display: flex; align-items: center; gap: 14px; }
+.shelf-head { margin-bottom: 26px; }
+.brand { display: flex; align-items: center; gap: 15px; }
 .brand-mark {
   flex: 0 0 auto;
-  width: 48px; height: 48px;
-  border-radius: 13px;
+  width: 52px; height: 52px;
+  border-radius: 15px;
   background: var(--accent);
   color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
-  font-size: 26px; font-weight: 700;
+  font-size: 28px; font-weight: 700;
 }
 .brand-text h1 {
-  font-size: 23px; margin: 0; letter-spacing: 1px; font-weight: 700;
+  font-size: 27px; margin: 0; letter-spacing: 0.5px; font-weight: 700;
 }
 .brand-text h1 span {
   font-family: Georgia, serif; font-weight: 400; font-size: 17px;
@@ -112,7 +112,7 @@ body { background: var(--bg); color: var(--fg); }
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--fg);
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   text-align: center;
 }
@@ -121,11 +121,12 @@ body { background: var(--bg); color: var(--fg); }
 .import-grid .btn { width: 100%; }
 .btn-block { width: 100%; }
 .btn-primary {
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
   font-weight: 600;
 }
-.btn-primary:active { background: var(--accent); color: #fff; }
+.btn-primary:active { opacity: 0.7; }
 
 /* 空状态（居中、填满留白） */
 .shelf-empty {
@@ -137,7 +138,7 @@ body { background: var(--bg); color: var(--fg); }
   padding: 24px;
   color: var(--fg-soft);
 }
-.shelf-empty svg { width: 66px; height: 66px; opacity: 0.85; }
+.shelf-empty svg { width: 74px; height: 74px; color: color-mix(in srgb, var(--fg) 55%, var(--bg)); }
 .shelf-empty h2 { margin: 0; font-size: 18px; color: var(--fg); font-weight: 600; }
 .shelf-empty p { margin: 0; font-size: 14px; line-height: 1.8; max-width: 280px; }
 
@@ -148,8 +149,8 @@ body { background: var(--bg); color: var(--fg); }
   align-content: start;
 }
 .book-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
   overflow: hidden;
   cursor: pointer;
   display: flex;
@@ -162,13 +163,13 @@ body { background: var(--bg); color: var(--fg); }
 .book-card:active .bc-cover { color: var(--bg); }
 /* 封面色块：取书名首字的拟物书封 */
 .bc-cover {
-  height: 92px;
+  height: 98px;
   display: flex; align-items: center; justify-content: center;
   font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
-  font-size: 38px; font-weight: 700;
+  font-size: 40px; font-weight: 700;
   background: color-mix(in srgb, var(--accent) 20%, var(--bg));
   color: var(--accent);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--hairline);
 }
 .bc-body { padding: 11px 12px 13px; display: flex; flex-direction: column; gap: 5px; }
 .bc-title { font-size: 15px; font-weight: 600; line-height: 1.4;
@@ -189,8 +190,8 @@ body { background: var(--bg); color: var(--fg); }
 .drop-hint {
   margin-top: 18px;
   padding: 16px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius);
   text-align: center;
   color: var(--fg-soft);
   font-size: 13px;
@@ -212,12 +213,12 @@ body { background: var(--bg); color: var(--fg); }
   padding-bottom: max(8px, env(safe-area-inset-bottom));
   background: var(--bar-bg);
   color: var(--bar-fg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--hairline);
   min-height: 46px;
   z-index: 5;
 }
 .topbar { top: 0; }
-.bottombar { bottom: 0; border-bottom: none; border-top: 1px solid var(--border); }
+.bottombar { bottom: 0; border-bottom: none; border-top: 1px solid var(--hairline); }
 .chapter-title {
   flex: 1;
   text-align: center;
@@ -246,7 +247,7 @@ body { background: var(--bg); color: var(--fg); }
   opacity: 0.9;
   font-variant-numeric: tabular-nums;
 }
-.bar-sep { width: 1px; height: 20px; background: var(--border); flex: 0 0 auto; }
+.bar-sep { width: 1px; height: 18px; background: var(--hairline); flex: 0 0 auto; }
 .bb-group { display: flex; align-items: center; gap: 4px; }
 .bb-nav { flex: 1 1 auto; }
 .bb-tools { gap: 2px; }
@@ -272,6 +273,11 @@ body { background: var(--bg); color: var(--fg); }
   --r-indent: 2em;
   --r-margin: 22px;
   --r-justify: left;
+
+  /* 苹果式设计令牌：发丝线、圆角、分段控件轨道（基于主题 fg/bg 动态生成） */
+  --hairline: color-mix(in srgb, var(--fg) 13%, var(--bg));
+  --track: color-mix(in srgb, var(--fg) 17%, var(--bg));
+  --radius: 14px;
 }
 
 /* 阅读页：排版变量由 body 上的内联值驱动（测量容器继承同样规则） */
@@ -385,9 +391,35 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
 .toc-item.active { color: var(--accent); font-weight: 600; }
 .empty-tip { padding: 24px 16px; color: var(--fg-soft); font-size: 14px; text-align: center; }
 
-/* 设置面板 */
+/* 设置面板：iOS 分组卡片 */
 .settings-body { padding: 16px 16px 44px; }
-.field { margin-bottom: 22px; }
+.settings-group { margin-bottom: 22px; }
+.group-title {
+  font-size: 12px;
+  color: var(--fg-soft);
+  letter-spacing: 0.5px;
+  margin: 0 6px 8px;
+}
+.group-body {
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.group-body .field {
+  margin: 0;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.group-body .field:last-child { border-bottom: none; }
+.group-hint {
+  margin: 8px 6px 0;
+  font-size: 12px;
+  color: var(--fg-soft);
+  line-height: 1.7;
+}
+
+/* 组内字段 */
 .field > label {
   display: flex;
   justify-content: space-between;
@@ -407,18 +439,44 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
   height: 26px;
   accent-color: var(--fg);
 }
-.switch { display: flex; align-items: center; gap: 7px; font-size: 14px; cursor: pointer; }
-.switch input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--fg); }
+/* iOS 风格开关 */
+.switch { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.switch input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 0 0 auto;
+  width: 44px; height: 26px;
+  border-radius: 13px;
+  background: var(--track);
+  position: relative;
+  cursor: pointer;
+  border: none;
+}
+.switch input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+}
+.switch input[type="checkbox"]:checked { background: var(--accent); }
+.switch input[type="checkbox"]:checked::after { left: 20px; }
 
-/* 分段控件：统一网格，不再出现孤按钮 */
-.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* 分段控件：高对比圆角块（墨水屏可读性优先，瞬时无动画） */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
 .seg.c5 { grid-template-columns: repeat(5, 1fr); }
 .seg button {
-  padding: 9px 4px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--hairline);
   background: transparent;
   color: var(--bar-fg);
-  border-radius: 8px;
+  border-radius: 9px;
+  padding: 9px 4px;
   cursor: pointer;
   font-size: 14px;
   text-align: center;
