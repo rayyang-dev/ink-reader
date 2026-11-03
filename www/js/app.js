@@ -259,12 +259,15 @@ async function openBook(id) {
   } else {
     currentPdfDoc = null;
     computeChapterChars();
-    paginateCurrentChapter();
   }
   $('shelf').classList.add('hidden');
   $('reader').classList.remove('hidden');
   $('reader').classList.add('hide-chrome');
   closePanels();
+  // 必须在阅读器可见后再分页：hidden 状态下 #page-viewport 高度为 0，会触发“每页 1 字”极端分支
+  if (!currentPdfDoc) {
+    paginateCurrentChapter();
+  }
   await renderPage();
   buildToc();
   buildBookmarks();

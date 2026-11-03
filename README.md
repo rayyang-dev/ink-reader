@@ -4,6 +4,13 @@
   <img src="docs/mockup.svg" width="280" alt="砚白 Inkstone 手机界面示意"/>
 </p>
 
+## 📱 界面预览
+
+| 书架 | 阅读内页 |
+|------|----------|
+| ![书架](docs/screen-shelf.png) | ![阅读内页](docs/screen-reader.png) |
+| ![阅读设置（排版）](docs/screen-settings.png) | ![中英互译配置](docs/screen-settings-translate.png) |
+
 <p align="center">
   <a href="https://github.com/rayyang-dev/ink-reader/releases"><img src="https://img.shields.io/badge/APK-下载-brightgreen" alt="APK"/></a>
   <img src="https://img.shields.io/badge/platform-Android%20%2F%20PWA-blue" alt="platform"/>
@@ -38,7 +45,7 @@
 
 ### Android APK（推荐）
 
-前往 **[Releases](https://github.com/rayyang-dev/ink-reader/releases)** 下载最新 `app-debug.apk`，
+前往 **[Releases](https://github.com/rayyang-dev/ink-reader/releases)** 下载 `app-release.apk`（已签名发布版，推荐）或 `app-debug.apk`（调试版），
 在手机上允许「未知来源」安装即可。无需登录、无后台联网。
 
 ### Web / PWA
@@ -56,7 +63,7 @@ npx serve www
 
 ## 🛠 从源码构建（Android）
 
-环境要求：**JDK 17+**、**Android SDK（platform 36 + build-tools 36.0.0）**、Node 22+。
+环境要求：**JDK 21+**（Capacitor 8 原生模块需 Java 21 编译）、**Android SDK（platform 36 + build-tools 36.0.0）**、Node 22+。
 
 ```bash
 # 1. 安装依赖
@@ -69,11 +76,33 @@ npx cap sync android
 cd android
 ./gradlew assembleDebug
 # 产物：android/app/build/outputs/apk/debug/app-debug.apk
+
+# 4. 构建签名 Release 包（需自行提供 keystore，见下）
+./gradlew assembleRelease
+# 产物：android/app/build/outputs/apk/release/app-release.apk
 ```
 
 > 若 `JAVA_HOME` 指向了旧 JDK，请先修正，例如：
-> `export JAVA_HOME="/c/Program Files/Java/jdk-18"`
+> `export JAVA_HOME="C:/Android/jdk-21.0.13+9"`
 > 安装 SDK 平台：`sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"`
+
+### Release 签名
+
+Release 包需要签名。本项目在 `android/app/build.gradle` 中读取 `android/local.properties` 的签名配置（该文件已被 `.gitignore` 忽略，不会进仓库）。在 `local.properties` 末尾追加：
+
+```properties
+keystore.path=C:/path/to/your-release-key.jks
+keystore.alias=inkreader
+keystore.password=你的密钥库密码
+keystore.keyPassword=你的密钥密码
+```
+
+没有 keystore？用 JDK 的 `keytool` 生成（妥善保管，丢失将无法更新同一签名的包）：
+
+```bash
+keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
 
 ---
 

@@ -16,10 +16,29 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // 留空；若 android/local.properties 配置了 keystore.path 则在下方填充
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // 仅在 local.properties 提供签名信息时启用 release 签名（密钥不进仓库）
+            def keyPropsFile = rootProject.file('local.properties')
+            if (keyPropsFile.exists()) {
+                def keyProps = new Properties()
+                keyProps.load(new FileInputStream(keyPropsFile))
+                def ksPath = keyProps.getProperty('keystore.path')
+                if (ksPath != null && !ksPath.trim().isEmpty()) {
+                    signingConfig signingConfigs.release
+                    signingConfigs.release.storeFile = file(ksPath)
+                    signingConfigs.release.storePassword = keyProps.getProperty('keystore.password')
+                    signingConfigs.release.keyAlias = keyProps.getProperty('keystore.alias')
+                    signingConfigs.release.keyPassword = keyProps.getProperty('keystore.keyPassword')
+                }
+            }
         }
     }
 }
