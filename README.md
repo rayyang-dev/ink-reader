@@ -45,7 +45,7 @@
 - 💾 **本地存储**：书籍内容存 IndexedDB，设置 / 进度 / 书签 / 统计存 localStorage（均带内存兜底）
 - 📊 **阅读统计与打卡**：按日 / 周 / 月统计读了哪些书、各花多少时间；当日累计达「打卡阈值」（默认 10 分钟，可设置）自动打卡
 - 🗂 **书架自动整理**：开启「书架按 AI 类型分组」后，书架空按 AI 标签归类，配合顶部标签筛选条快速找书
-- 🤖 **Android 原生壳**：基于 Capacitor，打包为 `com.inkstone.reader`（应用名「砚白」）
+- 🤖 **Android 原生壳**：基于 Capacitor，包名 `com.rayyang.inkstone`（应用名「砚白」，英文名 **Inkstone**）
 
 ---
 
@@ -122,7 +122,7 @@
 
 ### Android APK（推荐）
 
-前往 **[Releases](https://github.com/rayyang-dev/ink-reader/releases)** 下载 `app-release.apk`（已签名发布版，推荐）或 `app-debug.apk`（调试版），
+前往 **[Releases](https://github.com/rayyang-dev/ink-reader/releases)** 下载 `Inkstone-release.apk`（已签名发布版，推荐）或 `Inkstone-debug.apk`（调试版），
 在手机上允许「未知来源」安装即可。无需登录、无后台联网。
 
 ### Web / PWA
@@ -152,11 +152,11 @@ npx cap sync android
 # 3. 构建 Debug 包
 cd android
 ./gradlew assembleDebug
-# 产物：android/app/build/outputs/apk/debug/app-debug.apk
+# 产物：android/app/build/outputs/apk/debug/Inkstone-debug.apk
 
 # 4. 构建签名 Release 包（需自行提供 keystore，见下）
 ./gradlew assembleRelease
-# 产物：android/app/build/outputs/apk/release/app-release.apk
+# 产物：android/app/build/outputs/apk/release/Inkstone-release.apk
 ```
 
 > 若 `JAVA_HOME` 指向了旧 JDK，请先修正，例如：
@@ -231,7 +231,7 @@ ink-reader/
 │       ├── importers.js            # EPUB / TXT / PDF / MOBI / FB2 / HTML / DOCX 导入解析入口
 │       ├── mobidec.js              # 自研 MOBI 解析器（App 内直接解析，无需 Calibre）
 │       └── pdfview.js              # pdf.js 整页渲染（扫描型 PDF 整页显示）
-├── android/                        # Capacitor 生成的 Android 原生工程（包名 com.inkstone.reader）
+├── android/                        # Capacitor 生成的 Android 原生工程（包名 com.rayyang.inkstone）
 ├── docs/                           # 界面示意图 mockup.svg + 真实截图 screenshots/
 ├── tests/                          # Node 自测（features / 解析 / 翻译 / 端到端）+ Playwright 冒烟与截图
 ├── capacitor.config.json           # Capacitor 配置（appId / appName / webDir）
