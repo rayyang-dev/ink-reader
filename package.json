@@ -18,6 +18,7 @@
     "mobi": "^0.0.1"
   },
   "devDependencies": {
+    "harmony": "npm:capacitor-harmony@^0.1.2",
     "puppeteer-core": "^25.16.0"
   }
 }

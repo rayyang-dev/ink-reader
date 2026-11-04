@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "capacitor-harmony HarmonyOS module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Capacitor HarmonyOS entry ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "砚白"
+    },
+    {
+      "name": "app_name",
+      "value": "砚白"
+    },
+    {
+      "name": "reason",
+      "value": "required by the Capacitor plugin"
+    }
+  ]
+}
