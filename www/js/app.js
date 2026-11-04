@@ -7,13 +7,12 @@ import {
   addReadingTime, aggregateStats, loadStats, todayKey,
 } from './store.js';
 import { paginateChapter, chapterCharCount } from './paginate.js';
-import { parseTxt, parseEpub, parsePdf, parseMobi } from './importers.js';
+import { parseTxt, parseEpub, parsePdf, parseMobi, parseFb2, parseHtml, parseDocx } from './importers.js';
 import { openPdf, renderPdfPage } from './pdfview.js';
 import { translateText } from './translate.js';
 import {
   aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiTags, aiBilingual, pageParagraphs, renderMarkdown,
 } from './ai.js';
-import { SAMPLE_BOOK } from '../books/sample.js';
 
 const FONT_STACK = {
   serif: 'Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif',
@@ -987,9 +986,41 @@ function bindEvents() {
     }
     e.target.value = '';
   });
-  $('open-sample').addEventListener('click', async () => {
-    await putBook(SAMPLE_BOOK);
-    await openBook(SAMPLE_BOOK.id);
+  $('import-fb2').addEventListener('click', () => $('file-fb2').click());
+  $('file-fb2').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const book = await parseFb2(f);
+      await importBook(book);
+    } catch (err) {
+      alert('FB2 导入失败：' + err.message);
+    }
+    e.target.value = '';
+  });
+  $('import-html').addEventListener('click', () => $('file-html').click());
+  $('file-html').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const book = await parseHtml(f);
+      await importBook(book);
+    } catch (err) {
+      alert('HTML 导入失败：' + err.message);
+    }
+    e.target.value = '';
+  });
+  $('import-docx').addEventListener('click', () => $('file-docx').click());
+  $('file-docx').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const book = await parseDocx(f);
+      await importBook(book);
+    } catch (err) {
+      alert('DOCX 导入失败：' + err.message);
+    }
+    e.target.value = '';
   });
 
   // 拖拽导入
@@ -1023,8 +1054,14 @@ function bindEvents() {
         try { await importBook(await parseEpub(f)); } catch (err) { alert('EPUB 导入失败：' + err.message); }
       } else if (/\.pdf$/i.test(f.name)) {
         try { await importBook(await parsePdf(f)); } catch (err) { alert('PDF 导入失败：' + err.message); }
+      } else if (/\.fb2$/i.test(f.name)) {
+        try { await importBook(await parseFb2(f)); } catch (err) { alert('FB2 导入失败：' + err.message); }
+      } else if (/\.html?$/i.test(f.name)) {
+        try { await importBook(await parseHtml(f)); } catch (err) { alert('HTML 导入失败：' + err.message); }
+      } else if (/\.docx$/i.test(f.name)) {
+        try { await importBook(await parseDocx(f)); } catch (err) { alert('DOCX 导入失败：' + err.message); }
       } else {
-        alert('不支持的格式：' + f.name + '\n目前支持 .txt / .epub / .pdf / .mobi / .azw（AZW3/KFX 请用 Calibre 转 EPUB）。');
+        alert('不支持的格式：' + f.name + '\n目前支持 .txt / .epub / .pdf / .mobi / .azw / .fb2 / .html / .docx（AZW3/KFX 请用 Calibre 转 EPUB）。');
       }
     }
   });

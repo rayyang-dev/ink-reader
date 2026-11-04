@@ -18,7 +18,7 @@
   <a href="https://github.com/rayyang-dev/ink-reader/releases"><img src="https://img.shields.io/badge/APK-下载-brightgreen" alt="APK"/></a>
   <img src="https://img.shields.io/badge/platform-Android%20%2F%20PWA-blue" alt="platform"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license"/>
-  <img src="https://img.shields.io/badge/format-EPUB%20%7C%20PDF%20%7C%20TXT%20%7C%20MOBI-orange" alt="format"/>
+  <img src="https://img.shields.io/badge/format-EPUB%20%7C%20PDF%20%7C%20TXT%20%7C%20MOBI%20%7C%20FB2%20%7C%20HTML%20%7C%20DOCX-orange" alt="format"/>
 </p>
 
 **砚白（Inkstone）** 是一款面向「墨水屏阅读器 / 手机 / 平板」的本地优先电子书阅读应用。
@@ -34,7 +34,7 @@
 
 ## ✨ 特性
 
-- 📚 **多格式导入**：EPUB / PDF / TXT / MOBI，App 内原生解析，MOBI 无需借助 Calibre
+- 📚 **多格式导入**：EPUB / PDF / TXT / MOBI / FB2 / HTML / DOCX，App 内原生解析，MOBI 无需借助 Calibre（AZW3/KFX 仍建议用 Calibre 转 EPUB）
 - 📖 **分页式阅读**：非滚动，按屏幕真实分页，接近纸质书体验
 - ⚡ **墨水屏友好**：默认翻页零动画、即时整屏刷新（Regal）规避残影；可在设置开启「翻书页动画」，手机端像翻书一样过渡
 - 🎨 **8 款主题皮肤**：墨白 / 宣纸 / 茶色 / 青简 / 黛蓝 / 墨韵 / 素白 / 夜墨，设置页一点即换，其中「墨韵」为墨瓶·水墨晕染风格
@@ -88,7 +88,7 @@
 
 ### 📚 多格式导入与书架
 ![书架（平铺）](docs/screenshots/02-shelf-flat.png)
-本地优先的书架：支持 EPUB / PDF / TXT / MOBI 一键导入（MOBI 在 App 内原生解析，无需 Calibre），顶部按 AI 标签快速筛选；底部导航栏在书架 / 统计 / 设置 间切换；空书架有友好引导。
+本地优先的书架：支持 EPUB / PDF / TXT / MOBI / FB2 / HTML / DOCX 一键导入（MOBI 在 App 内原生解析，无需 Calibre；AZW3/KFX 仍建议用 Calibre 转 EPUB），顶部按 AI 标签快速筛选；底部导航栏在书架 / 统计 / 设置 间切换；空书架有友好引导。
 
 ### 📖 分页式阅读（墨水屏优化）
 ![阅读内页](docs/screenshots/03-reader.png)
@@ -116,7 +116,7 @@
 
 ### 📭 空书架引导
 ![空书架](docs/screenshots/01-shelf-empty.png)
-首次打开或暂无书籍时的引导页，提示导入与「读示例书」。
+首次打开或暂无书籍时的引导页，提示从本地导入电子书（支持 EPUB / PDF / TXT / MOBI / FB2 / HTML / DOCX）。
 
 ## 📦 安装
 
@@ -207,9 +207,9 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 ## 🧱 技术栈
 
 - 前端：原生 ES Modules（无打包构建）、IndexedDB、Service Worker（PWA）
-- 解析：[fflate](https://github.com/101arrowz/fflate)（EPUB）、[pdf.js v4](https://github.com/mozilla/pdf.js)（PDF）、自研 MOBI 解析器
+- 解析：[fflate](https://github.com/101arrowz/fflate)（EPUB / DOCX）、[pdf.js v4](https://github.com/mozilla/pdf.js)（PDF）、自研 MOBI 解析器、原生 DOMParser（FB2 / HTML）
 - 原生壳：Capacitor 8（Android）
-- 测试：Node 原生 `node:test` + Playwright；含「设置 / 统计打卡 / 日周月聚合 / 书架元数据」全功能自测、真实浏览器冒烟（断言新控件已接入 DOM 并全页面截图）、解析 / 翻译 / 端到端共 20+ 用例，全部通过
+- 测试：Node 原生 `node:test` + Playwright；含「设置 / 统计打卡 / 日周月聚合 / 书架元数据」全功能自测、真实浏览器冒烟（断言新控件已接入 DOM 并全页面截图）、解析 / 翻译 / 端到端，以及 FB2 / HTML / DOCX 三种新格式导入的端到端校验，全部通过
 
 ---
 
@@ -228,7 +228,7 @@ ink-reader/
 │       ├── translate.js            # 中英互译（mock / DeepL / Google / 通用 LLM 可插拔）
 │       ├── llm.js                  # OpenAI 兼容统一客户端（翻译 / 摘要 / 问答 / 笔记 共用）
 │       ├── ai.js                   # AI 能力：导读 / 选中即问解释 / 书中问答(RAG) / 人物脉络笔记 / 智能标签 / 段落双语
-│       ├── importers.js            # EPUB / TXT / PDF 导入解析入口
+│       ├── importers.js            # EPUB / TXT / PDF / MOBI / FB2 / HTML / DOCX 导入解析入口
 │       ├── mobidec.js              # 自研 MOBI 解析器（App 内直接解析，无需 Calibre）
 │       └── pdfview.js              # pdf.js 整页渲染（扫描型 PDF 整页显示）
 ├── android/                        # Capacitor 生成的 Android 原生工程（包名 com.inkstone.reader）

@@ -12,7 +12,6 @@ const ASSETS = [
   'js/pdfview.js',
   'js/translate.js',
   'js/mobidec.js',
-  'books/sample.js',
   'js/vendor/fflate.js',
   'js/vendor/pdf.min.js',
   'js/vendor/pdf.worker.min.js',

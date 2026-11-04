@@ -27,12 +27,17 @@
           <button id="import-epub" class="btn">＋ EPUB</button>
           <button id="import-pdf" class="btn">＋ PDF</button>
           <button id="import-mobi" class="btn">＋ MOBI</button>
+          <button id="import-fb2" class="btn">＋ FB2</button>
+          <button id="import-html" class="btn">＋ HTML</button>
+          <button id="import-docx" class="btn">＋ DOCX</button>
         </div>
-        <button id="open-sample" class="btn btn-primary btn-block">读示例书</button>
         <input type="file" id="file-txt" accept=".txt,text/plain" hidden />
         <input type="file" id="file-epub" accept=".epub,application/epub+zip" hidden />
         <input type="file" id="file-pdf" accept=".pdf,application/pdf" hidden />
         <input type="file" id="file-mobi" accept=".mobi,.azw,application/x-mobipocket-ebook" hidden />
+        <input type="file" id="file-fb2" accept=".fb2" hidden />
+        <input type="file" id="file-html" accept=".html,.htm,text/html" hidden />
+        <input type="file" id="file-docx" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
       </div>
       <div id="tag-filter" class="tag-filter hidden"></div>
       <div id="book-list" class="book-list"></div>
@@ -43,9 +48,9 @@
           <path d="M12 5.5V21.7"/>
         </svg>
         <h2>书架空空如也</h2>
-        <p>点击下方「读示例书」马上体验，<br/>或导入本地 TXT / EPUB / PDF / MOBI。</p>
+        <p>导入本地 TXT / EPUB / PDF / MOBI / FB2 / HTML / DOCX 开始阅读，<br/>支持拖拽，也支持手机/平板直接选文件。</p>
       </div>
-      <div id="drop-hint" class="drop-hint">把 .txt / .epub / .pdf / .mobi / .azw 拖到这里导入 · AZW3/KFX 请用 Calibre 转成 EPUB 再导入</div>
+      <div id="drop-hint" class="drop-hint">把 .txt / .epub / .pdf / .mobi / .azw / .fb2 / .html / .docx 拖到这里导入 · AZW3/KFX 请用 Calibre 转成 EPUB 再导入</div>
     </section>
 
     <!-- ============ 阅读统计（独立页面） ============ -->

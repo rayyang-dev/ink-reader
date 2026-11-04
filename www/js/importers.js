@@ -330,3 +330,254 @@ export async function parsePdf(file) {
     chapters,
   };
 }
+
+// ================= 通用小工具（FB2 / HTML / DOCX 共用） =================
+function esc(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function localNameOf(node) { return node.localName || node.nodeName || ''; }
+function byLocal(root, name) {
+  const out = [];
+  const walk = (n) => {
+    if (n.nodeType === 1 && localNameOf(n) === name) out.push(n);
+    for (const c of Array.from(n.childNodes)) walk(c);
+  };
+  walk(root);
+  return out;
+}
+function getAttr(node, n) {
+  for (const cand of [n, 'w:' + n, 'xlink:' + n, 'l:' + n]) {
+    const v = node.getAttribute(cand);
+    if (v != null) return v;
+  }
+  return '';
+}
+function sanitizeHtml(html) {
+  return html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+    .replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+}
+
+// ================= FB2（FictionBook，纯 XML，DOMParser 直解） =================
+export async function parseFb2(file) {
+  const text = await file.text();
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('FB2 解析失败：不是有效的 XML 文件');
+  const fb = doc.documentElement;
+
+  let title = (file.name || '未命名').replace(/\.[^.]+$/, '');
+  let author = '';
+  const titleInfo = byLocal(fb, 'title-info')[0];
+  if (titleInfo) {
+    const bt = byLocal(titleInfo, 'book-title')[0];
+    if (bt && bt.textContent.trim()) title = bt.textContent.trim();
+    const a = byLocal(titleInfo, 'author')[0];
+    if (a) {
+      const fn = byLocal(a, 'first-name')[0];
+      const ln = byLocal(a, 'last-name')[0];
+      author = [ln && ln.textContent, fn && fn.textContent].filter(Boolean).join(' ').trim();
+    }
+  }
+
+  // 内嵌二进制图片 -> data URI
+  const images = {};
+  for (const b of byLocal(doc, 'binary')) {
+    const id = b.getAttribute('id');
+    const ct = b.getAttribute('content-type') || 'image/jpeg';
+    const data = (b.textContent || '').replace(/\s+/g, '').trim();
+    if (id && data) images['#' + id] = 'data:' + ct + ';base64,' + data;
+  }
+
+  const body = byLocal(fb, 'body')[0];
+  const sections = body ? Array.from(body.children).filter((c) => localNameOf(c) === 'section') : [];
+  const chapters = [];
+  if (sections.length) {
+    for (const sec of sections) {
+      const t = Array.from(sec.children).find((c) => localNameOf(c) === 'title');
+      const title2 = t ? t.textContent.trim() : '章节';
+      const clone = sec.cloneNode(true);
+      const firstTitle = Array.from(clone.children).find((c) => localNameOf(c) === 'title');
+      if (firstTitle) firstTitle.remove();
+      chapters.push({ title: title2 || '章节', html: fb2NodeToHtml(clone, images) });
+    }
+  } else {
+    chapters.push({ title, html: fb2NodeToHtml(body || fb, images) });
+  }
+  if (!chapters.some((c) => c.html.replace(/<[^>]+>/g, '').trim())) {
+    chapters.length = 0;
+    chapters.push({ title, html: '<p></p>' });
+  }
+  return { id: 'fb2-' + hash(title + author + Date.now()), title, author, source: 'fb2', chapters };
+}
+function fb2NodeToHtml(node, images) {
+  if (node.nodeType === 3) return esc(node.nodeValue);
+  if (node.nodeType !== 1) return '';
+  const tag = localNameOf(node);
+  if (tag === 'image') {
+    const ref = getAttr(node, 'href');
+    const uri = images[ref];
+    return uri ? '<img src="' + uri + '" alt="" />' : '';
+  }
+  const kids = Array.from(node.childNodes).map((c) => fb2NodeToHtml(c, images)).join('');
+  switch (tag) {
+    case 'p': return '<p>' + kids + '</p>';
+    case 'title': return '<h2>' + kids + '</h2>';
+    case 'subtitle': return '<h3>' + kids + '</h3>';
+    case 'epigraph': return '<blockquote class="epigraph">' + kids + '</blockquote>';
+    case 'text-author': return '<p class="text-author">' + kids + '</p>';
+    case 'poem': return '<div class="poem">' + kids + '</div>';
+    case 'stanza': return '<div class="stanza">' + kids + '</div>';
+    case 'v': return '<p class="verse">' + kids + '</p>';
+    case 'cite': return '<blockquote>' + kids + '</blockquote>';
+    case 'code': return '<pre>' + kids + '</pre>';
+    case 'strong': return '<strong>' + kids + '</strong>';
+    case 'emphasis': return '<em>' + kids + '</em>';
+    case 'a': case 'link': return '<a href="' + esc(getAttr(node, 'href') || '#') + '">' + kids + '</a>';
+    case 'empty-line': return '<br />';
+    case 'section': return kids;
+    case 'body': return kids;
+    default: return kids;
+  }
+}
+
+// ================= HTML / HTM（提取正文，按标题分章） =================
+export async function parseHtml(file) {
+  const text = await file.text();
+  const name = (file.name || '未命名').replace(/\.[^.]+$/, '');
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  doc.querySelectorAll('script,style,link,meta').forEach((e) => e.remove());
+  const body = doc.body || doc.documentElement;
+  const headingRe = /^h[1-3]$/i;
+  const chapters = [];
+  let cur = null;
+  const close = () => {
+    if (cur) {
+      const inner = cur.parts.join('');
+      if (inner.replace(/<[^>]+>/g, '').trim()) chapters.push({ title: cur.title, html: inner });
+      cur = null;
+    }
+  };
+  for (const el of Array.from(body.children)) {
+    const tn = (el.tagName || '').toLowerCase();
+    if (headingRe.test(tn)) {
+      close();
+      const htext = (el.textContent || '').trim();
+      cur = { title: htext || '第 ' + (chapters.length + 1) + ' 节', parts: [] };
+      cur.parts.push('<' + tn + '>' + esc(el.textContent || '') + '</' + tn + '>');
+    } else {
+      if (!cur) cur = { title: name, parts: [] };
+      cur.parts.push(sanitizeHtml(el.outerHTML));
+    }
+  }
+  close();
+  if (!chapters.length) chapters.push({ title: name, html: sanitizeHtml(body.innerHTML) });
+  const metaTitle = doc.querySelector('title');
+  const title = (metaTitle && metaTitle.textContent.trim()) || name;
+  return { id: 'html-' + hash(name + Date.now()), title, author: '', source: 'html', chapters };
+}
+
+// ================= DOCX（OOXML Word，复用 fflate 解压） =================
+export async function parseDocx(file) {
+  const fflate = window.fflate;
+  if (!fflate) throw new Error('解压库（fflate）未加载，请刷新页面后重试');
+  let files;
+  try {
+    files = fflate.unzipSync(new Uint8Array(await file.arrayBuffer()));
+  } catch (e) {
+    throw new Error('DOCX 解压失败（可能不是有效的 .docx / ZIP 包）：' + (e && e.message ? e.message : e));
+  }
+  const xml = decode(files['word/document.xml'] || files['word/document2.xml']);
+  if (!xml) throw new Error('DOCX 结构异常：缺少 word/document.xml');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('DOCX 正文解析失败');
+
+  const styleMap = parseDocxStyleMap(decode(files['word/styles.xml']));
+  const body = byLocal(doc.documentElement, 'body')[0] || doc.documentElement;
+  const paras = byLocal(body, 'p');
+
+  const chapters = [];
+  let cur = null;
+  const newChap = (t) => ({ title: t || '未命名', parts: [], has: false });
+  for (const p of paras) {
+    const pPr = byLocal(p, 'pPr')[0];
+    let styleId = '';
+    let numId = null;
+    if (pPr) {
+      const ps = byLocal(pPr, 'pStyle')[0];
+      if (ps) styleId = getAttr(ps, 'val') || '';
+      const numPr = byLocal(pPr, 'numPr')[0];
+      if (numPr) { const n = byLocal(numPr, 'numId')[0]; if (n) numId = getAttr(n, 'val'); }
+    }
+    const headingLevel = styleMap.heading[styleId];
+    const html = docxRunsToHtml(p);
+    const txt = docxStripText(p);
+    if (headingLevel && txt) {
+      if (cur && cur.has) chapters.push(cur);
+      cur = newChap(txt);
+      cur.parts.push('<h' + headingLevel + '>' + esc(txt) + '</h' + headingLevel + '>');
+      cur.has = true;
+    } else if (numId != null && numId !== '0') {
+      if (!cur) cur = newChap('正文');
+      if (html.trim()) { cur.parts.push('<li>' + html + '</li>'); cur.has = true; }
+    } else {
+      if (!cur) cur = newChap('正文');
+      if (html.trim()) { cur.parts.push('<p>' + html + '</p>'); cur.has = true; }
+    }
+  }
+  if (cur && cur.has) chapters.push(cur);
+  if (!chapters.length) chapters.push({ title: file.name.replace(/\.[^.]+$/, ''), html: '<p></p>' });
+
+  const core = decode(files['docProps/core.xml']);
+  const mt = (core.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i) || [])[1];
+  const ma = (core.match(/<dc:creator[^>]*>([^<]+)<\/dc:creator>/i) || [])[1];
+  const title = (mt && mt.trim()) || file.name.replace(/\.[^.]+$/, '');
+  const author = (ma && ma.trim()) || '';
+  return {
+    id: 'docx-' + hash(title + author + Date.now()),
+    title, author, source: 'docx',
+    chapters: chapters.map((c) => ({ title: c.title, html: c.parts.join('') })),
+  };
+}
+function parseDocxStyleMap(stylesXml) {
+  const map = { heading: {} };
+  if (!stylesXml) return map;
+  const re = /<w:style\b([^>]*?w:styleId="([^"]+)"[^>]*?)>([\s\S]*?)<\/w:style>/gi;
+  let m;
+  while ((m = re.exec(stylesXml))) {
+    const sid = m[2];
+    const inner = m[3];
+    const name = (inner.match(/w:name\b[^>]*?w:val="([^"]+)"/i) || inner.match(/w:val="([^"]+)"/i) || [])[1] || '';
+    const hm = name.match(/heading\s*(\d)/i);
+    if (hm) map.heading[sid] = Math.min(6, parseInt(hm[1], 10));
+    else if (/title/i.test(name)) map.heading[sid] = 1;
+  }
+  return map;
+}
+function docxRunsToHtml(p) {
+  const runs = byLocal(p, 'r');
+  if (!runs.length) return esc(p.textContent || '');
+  return runs.map(docxRunToHtml).join('');
+}
+function docxRunToHtml(r) {
+  const rPr = byLocal(r, 'rPr')[0];
+  let b = false, i = false;
+  if (rPr) { b = byLocal(rPr, 'b').length > 0; i = byLocal(rPr, 'i').length > 0; }
+  let out = '';
+  for (const n of Array.from(r.childNodes)) {
+    const ln = localNameOf(n);
+    if (n.nodeType === 3) out += esc(n.nodeValue || '');
+    else if (ln === 't') out += esc(n.textContent || '');
+    else if (ln === 'br') out += '<br/>';
+    else if (ln === 'tab') out += '&nbsp;&nbsp;';
+    else if (ln === 'noBreakHyphen') out += '-';
+  }
+  if (b) out = '<b>' + out + '</b>';
+  if (i) out = '<i>' + out + '</i>';
+  return out;
+}
+function docxStripText(el) {
+  return byLocal(el, 't').map((t) => t.textContent).join('').trim();
+}

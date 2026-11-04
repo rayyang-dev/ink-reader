@@ -42,11 +42,16 @@ await new Promise((r) => server.listen(PORT, r));
 await mkdir(OUT, { recursive: true });
 console.log('静态服务器已启动: http://localhost:' + PORT);
 
-const { SAMPLE_BOOK } = await import(new URL('../www/books/sample.js', import.meta.url).href);
-
-// 种子书：示例书 + 一本技术书，各带 AI 标签，用于展示「按类型分组」与「统计明细」
-const book1 = JSON.parse(JSON.stringify(SAMPLE_BOOK));
-book1.ai = { tags: ['小说', '随笔'] };
+// 种子书：示例书（内联，不再依赖已删除的 books/sample.js）+ 一本技术书，各带 AI 标签
+const book1 = {
+  id: 'builtin-sample-shouji', title: '示例书·手记', author: '佚名', source: 'txt',
+  addedAt: Date.now() - 2000,
+  chapters: [
+    { title: '第一章 起', html: '<p>这是一段示例正文，用于展示阅读与翻页效果。</p><p>第二段内容继续展开。</p>' },
+    { title: '第二章 承', html: '<p>翻过一页，故事仍在继续。</p>' },
+  ],
+  ai: { tags: ['小说', '随笔'] },
+};
 const book2 = {
   id: 'seed-2', title: '深入浅出推荐系统', author: '佚名', source: 'txt',
   addedAt: Date.now() - 1000,
