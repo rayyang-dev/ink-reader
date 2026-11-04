@@ -359,6 +359,44 @@
 
     <!-- EPUB 解压库（UMD 全局 fflate） -->
     <script src="js/vendor/fflate.js"></script>
+
+    <!-- 诊断浮层：仅在出错或初始化超时时才显示，正常情况下不出现（排障期临时加，稳定后可删） -->
+    <script>
+      (function () {
+        try {
+          var box = document.createElement('div');
+          box.id = 'diag';
+          box.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;max-height:55%;overflow:auto;background:rgba(20,0,0,.93);color:#ffb4b4;font:12px/1.5 monospace;padding:8px 10px;border-bottom:2px solid #f33;white-space:pre-wrap;word-break:break-all;';
+          var open = false, envLogged = false;
+          function envInfo() {
+            return [
+              '— 环境 —',
+              'UA: ' + navigator.userAgent,
+              'SW: ' + ('serviceWorker' in navigator ? '支持' : '不支持'),
+              'Capacitor: ' + (window.Capacitor ? '有' : '无'),
+              'IndexedDB: ' + (window.indexedDB ? '有' : '无'),
+              'file input: ' + (document.createElement('input').type === 'file' ? '可创建' : '异常'),
+              'app.js init: ' + (window.__INK_INIT_DONE ? '已完成' : '未完成(模块可能未执行)')
+            ].join('\n');
+          }
+          function show() { if (!open) { document.body.appendChild(box); open = true; } }
+          function log(t) { show(); box.textContent += t + '\n'; }
+          function logEnvFirst() { if (!envLogged) { log(envInfo()); envLogged = true; } }
+          window.addEventListener('error', function (e) {
+            if (e && e.message && /favicon/i.test(e.message)) return;
+            logEnvFirst();
+            log('❌ ERROR ' + (e.message || e.error) + (e.filename ? (' @ ' + e.filename + ':' + e.lineno) : ''));
+          });
+          window.addEventListener('unhandledrejection', function (e) {
+            var r = e && e.reason; logEnvFirst(); log('❌ PROMISE ' + (r && r.message ? r.message : r));
+          });
+          setTimeout(function () {
+            if (!window.__INK_INIT_DONE) { logEnvFirst(); log('⚠️ 3s 后 app.js init 仍未完成，模块很可能未成功执行'); }
+          }, 3000);
+        } catch (e) {}
+      })();
+    </script>
+
     <script type="module" src="js/app.js"></script>
   </body>
 </html>

@@ -1455,5 +1455,6 @@ function init() {
       location.reload();
     });
   }
+  window.__INK_INIT_DONE = true; // 诊断标记：init 已完成
 }
 init();
