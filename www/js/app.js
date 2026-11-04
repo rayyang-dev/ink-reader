@@ -1210,6 +1210,12 @@ function init() {
   renderShelf();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+    // 新 Service Worker 接管后自动刷新一次，避免升级后一直显示旧缓存页面
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (sessionStorage.getItem('sw-reloaded') === '1') return;
+      sessionStorage.setItem('sw-reloaded', '1');
+      location.reload();
+    });
   }
 }
 init();
