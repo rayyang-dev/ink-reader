@@ -295,7 +295,16 @@ body { background: var(--bg); color: var(--fg); }
   background: var(--bg);
   perspective: 1500px;
 }
-#page { transform-style: preserve-3d; backface-visibility: hidden; transform-origin: center center; }
+#page { transform-style: preserve-3d; backface-visibility: hidden; transform-origin: center center; position: relative; }
+/* 翻书过程中覆盖在页面上的渐变阴影：书脊一侧偏暗，模拟书页翻动时的明暗与弧度 */
+#page.flipping::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: var(--flip-shade, none);
+}
 
 /* 排版变量默认值（JS 会在 body 上覆盖这些值，.page 仅引用，不重声明） */
 :root {

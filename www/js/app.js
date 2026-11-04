@@ -418,30 +418,49 @@ async function afterPageTurn(chapterChanged) {
     regalFlash();
   }
 }
-// 翻书页动画：当前页绕边沿旋出，新页从对侧旋入；墨水屏零动画原则仅在此处临时放开
+// 翻书页动画：下一页绕左侧书脊旋出、上一页绕右侧书脊旋出（右缘/右下角为自由边掀起向左翻），
+// 新页从对侧旋入；翻动时叠加随书脊移动的渐变阴影强化“书页”立体感。墨水屏零动画原则仅在此处临时放开。
 async function flipPage(dir, mutate) {
   const page = $('page');
   if (!settings.pageFlip || !page) { mutate(); return; }
   if (isFlipping) return;
   isFlipping = true;
-  page.style.setProperty('transition', 'transform .26s ease, opacity .24s ease', 'important');
-  page.style.transformOrigin = dir === 'next' ? 'right center' : 'left center';
-  page.style.transform = dir === 'next' ? 'rotateY(-92deg)' : 'rotateY(92deg)';
-  page.style.opacity = '0.12';
-  await wait(135);
+
+  const isNext = dir === 'next';
+  // 书脊在左：翻下一页绕左缘旋出；翻上一页绕右缘旋出。修正此前“从右侧往外掰、像从里翻”的诡异感。
+  const origin = isNext ? 'left center' : 'right center';
+  const leave = isNext ? -100 : 100;   // 旋出角度（绕书脊转离视线，背面隐藏后自然消失）
+  const enter = isNext ? 100 : -100;    // 旋入从对侧回正
+  const shade = isNext
+    ? 'linear-gradient(to right, rgba(0,0,0,.36), rgba(0,0,0,0) 46%)'   // 书脊在左，左侧偏暗
+    : 'linear-gradient(to left, rgba(0,0,0,.36), rgba(0,0,0,0) 46%)';    // 书脊在右，右侧偏暗
+
+  const T = 'transform .24s cubic-bezier(.4,.02,.25,1), opacity .18s ease';
+  // 全局有 transition:none!important（墨水屏零动画原则），这里用内联 !important 临时放开，让翻书动画生效
+  page.style.setProperty('transition', T, 'important');
+  page.style.transformOrigin = origin;
+  page.style.setProperty('--flip-shade', shade);
+  page.classList.add('flipping');
+  page.style.transform = `rotateY(${leave}deg)`;
+  page.style.opacity = '0.2';
+
+  await wait(245);          // 等旋出接近 90°（背面隐藏、内容不可见）时再换页
   mutate();
-  // 跳到对侧（无过渡），再旋回正面
-  page.style.transition = 'none';
-  page.style.transform = dir === 'next' ? 'rotateY(92deg)' : 'rotateY(-92deg)';
-  void page.offsetWidth; // 强制重排
-  page.style.setProperty('transition', 'transform .26s ease, opacity .24s ease', 'important');
+  page.classList.remove('flipping');   // 旋入阶段不再叠加阴影，避免生硬
+  page.style.setProperty('transition', 'none', 'important');
+  page.style.transform = `rotateY(${enter}deg)`;
+  page.style.opacity = '0.2';
+  void page.offsetWidth;     // 强制重排
+  page.style.setProperty('transition', T, 'important');
   page.style.transform = 'rotateY(0deg)';
   page.style.opacity = '1';
-  await wait(265);
+
+  await wait(250);
   page.style.transition = '';
   page.style.transform = '';
   page.style.transformOrigin = '';
   page.style.opacity = '';
+  page.style.removeProperty('--flip-shade');
   isFlipping = false;
 }
 function wait(ms) {
