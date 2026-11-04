@@ -81,6 +81,40 @@
 
 ---
 
+## 📸 功能一览（截图 + 说明）
+
+### 📚 多格式导入与书架
+![书架（平铺）](docs/screenshots/02-shelf-flat.png)
+本地优先的书架：支持 EPUB / PDF / TXT / MOBI 一键导入（MOBI 在 App 内原生解析，无需 Calibre），顶部按 AI 标签快速筛选；空书架有友好引导。
+
+### 📖 分页式阅读（墨水屏优化）
+![阅读内页](docs/screenshots/03-reader.png)
+按屏幕真实尺寸分页（非滚动），翻页零动画、整屏反相刷新（Regal）规避残影；可调字体 / 边距 / 行距 / 段距 / 字间距、两端对齐与首行缩进。
+
+### 📊 阅读统计与自动打卡
+![阅读统计（日）](docs/screenshots/06-stats-day.png)
+阅读页底部「统计」按 **日 / 周 / 月** 汇总：总时长、阅读书目数、打卡状态，以及每本书的阅读分钟数明细。在阅读页停留即累计时长，切后台或打开面板自动暂停；当日累计达「打卡阈值」（默认 10 分钟）自动打卡。
+
+### 🗂 书架按 AI 类型自动分组
+![分组书架](docs/screenshots/03-shelf-grouped.png)
+在 **设置 → 阅读与书架** 开启「书架按 AI 类型分组」后，书架空按每本书的 AI 标签归类（未分类归入「未分类」），配合顶部标签筛选条快速找书。
+
+### 🤖 AI 助手（本地优先）
+![AI 助手面板](docs/screenshots/05-ai-panel.png)
+阅读页「AI」按钮打开面板：全书/本章导读、书中问答（轻量 RAG，只引用书中内容）、人物脉络笔记、段落双语对照；结果缓存到本机，默认关闭、按需联网。
+
+### 🔤 中英互译（DeepSeek 等通用模型）
+![个人设置（阅读与书架）](docs/screenshots/04-settings.png)
+划词即译，可用 DeepSeek / 通义 / 本地 Ollama 等任意 OpenAI 兼容模型（详见下方「AI 引擎配置」）。选中文字还可用「AI 解释」结合全书上下文讲解术语或难句。
+
+### ⚙️ 个人设置
+![设置面板](docs/screenshots/04-settings.png)
+iOS 风格分组卡片：外观 / 排版 / 屏幕（整屏刷新）/ AI 引擎 / 阅读与书架（打卡阈值 + 书架分组）。所有设置只存本机。
+
+### 📭 空书架引导
+![空书架](docs/screenshots/01-shelf-empty.png)
+首次打开或暂无书籍时的引导页，提示导入与「读示例书」。
+
 ## 📦 安装
 
 ### Android APK（推荐）
@@ -163,6 +197,8 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 
 `mock` 后端离线返回占位译文，可用于体验流程；真实翻译与 AI 能力请填入对应后端 Key（选「AI 大模型」即同时解锁摘要/问答/笔记/标签/双语）。
 
+> **中英翻译可用 DeepSeek 等通用大模型**：只要填「AI 大模型」并把 **LLM Base** 设为 OpenAI 兼容地址、**LLM Model** 设为对应模型名、**API Key** 填该平台的 Key 即可。例如用 DeepSeek：Base `https://api.deepseek.com/v1`、Model `deepseek-chat`、Key 填 DeepSeek 控制台获取的 Key——翻译、导读、书中问答、人物笔记、智能标签、段落双语全部走这一个模型，无需单独对接翻译 API。同样可换通义 / 智谱 / 本地 Ollama 等任意 OpenAI 兼容服务。
+
 ---
 
 ## 🧱 技术栈
@@ -178,16 +214,28 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 
 ```
 ink-reader/
-├── www/                  # Web 应用（PWA 入口，也是 Capacitor 的 webDir）
-│   ├── index.html
-│   ├── css/style.css
-│   └── js/               # app / store / translate / mobidec 等模块
-├── android/              # Capacitor 生成的 Android 原生工程
-├── docs/mockup.svg       # 界面示意图
-├── tests/                # 解析与翻译的单元 / 端到端测试
-├── capacitor.config.json
+├── www/                            # Web 应用（PWA 入口，也是 Capacitor 的 webDir）
+│   ├── index.html                  # 单页结构：书架 / 阅读器 / 各侧滑面板（设置/目录/书签/AI/统计）
+│   ├── css/style.css               # 墨水屏主题与全部样式（零动画 / Regal 整屏反色 / 纸感设计令牌）
+│   ├── books/sample.js             # 内置示例书《阅读者手记》（无版权风险，用于演示）
+│   └── js/
+│       ├── app.js                  # 主控：书架渲染 / 分页翻页 / 阅读计时打卡 / 面板与设置接线
+│       ├── store.js                # 存储层：IndexedDB 存书籍 + localStorage 存设置/进度/书签/统计（均带内存兜底）
+│       ├── paginate.js             # 按屏幕真实尺寸的分页引擎（非滚动）
+│       ├── translate.js            # 中英互译（mock / DeepL / Google / 通用 LLM 可插拔）
+│       ├── llm.js                  # OpenAI 兼容统一客户端（翻译 / 摘要 / 问答 / 笔记 共用）
+│       ├── ai.js                   # AI 能力：导读 / 选中即问解释 / 书中问答(RAG) / 人物脉络笔记 / 智能标签 / 段落双语
+│       ├── importers.js            # EPUB / TXT / PDF 导入解析入口
+│       ├── mobidec.js              # 自研 MOBI 解析器（App 内直接解析，无需 Calibre）
+│       └── pdfview.js              # pdf.js 整页渲染（扫描型 PDF 整页显示）
+├── android/                        # Capacitor 生成的 Android 原生工程（包名 com.inkstone.reader）
+├── docs/                           # 界面示意图 mockup.svg + 真实截图 screenshots/
+├── tests/                          # Node 自测（features / 解析 / 翻译 / 端到端）+ Playwright 冒烟与截图
+├── capacitor.config.json           # Capacitor 配置（appId / appName / webDir）
 └── README.md
 ```
+
+> 架构要点：前端是**零构建的原生 ES Modules**（无 webpack/vite），直接在浏览器与 Capacitor WebView 中运行；所有第三方能力（EPUB/PDF/MOBI 解析、LLM 调用）都收敛在 `js/` 下、以纯函数 + 可控的 `fetch` 实现，便于在 Node 环境下做单元测试。存储与联网均遵循「本地优先、零追踪」：书籍在 IndexedDB、设置/进度/书签/统计在 localStorage，AI 仅在用户主动触发且已填 Key 时才向用户指定的接口发请求。
 
 ---
 
