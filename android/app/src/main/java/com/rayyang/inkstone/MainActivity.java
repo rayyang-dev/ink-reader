@@ -1,4 +1,4 @@
-package com.inkstone.reader;
+package com.rayyang.inkstone;
 
 import com.getcapacitor.BridgeActivity;
 
