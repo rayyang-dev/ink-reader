@@ -4,7 +4,7 @@ android {
     namespace = "com.inkstone.reader"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.inkstone.reader"
+        applicationId "com.inkreader.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 3
@@ -39,6 +39,11 @@ android {
                     signingConfigs.release.keyPassword = keyProps.getProperty('keystore.keyPassword')
                 }
             }
+        }
+        debug {
+            // 调试包使用独立包名 + 名称，绝不与正式版（com.inkreader.app）撞名或互相覆盖
+            applicationIdSuffix ".debug"
+            debuggable true
         }
     }
 }
