@@ -4,7 +4,8 @@
   "description": "",
   "main": "sw.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/smoke.mjs",
+    "test:smoke": "node test/smoke.mjs"
   },
   "keywords": [],
   "author": "",
@@ -15,5 +16,8 @@
     "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
     "mobi": "^0.0.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.16.0"
   }
 }

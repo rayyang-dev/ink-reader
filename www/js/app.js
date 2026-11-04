@@ -10,10 +10,27 @@ import { paginateChapter, chapterCharCount } from './paginate.js';
 import { parseTxt, parseEpub, parsePdf, parseMobi, parseFb2, parseHtml, parseDocx } from './importers.js';
 import { openPdf, renderPdfPage } from './pdfview.js';
 import { translateText } from './translate.js';
-import { App } from '@capacitor/app';
 import {
   aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiTags, aiBilingual, pageParagraphs, renderMarkdown,
 } from './ai.js';
+
+// Capacitor 仅存在于原生外壳（Android WebView），由桥接层把插件挂在全局 window.Capacitor.Plugins 上。
+// 本项目 www/ 未打包，浏览器 / PWA 环境没有运行时、也没有 importmap，若用裸模块导入
+// '@capacitor/app' 会在模块求值阶段抛 “Failed to resolve module specifier” 导致整个 app.js
+// 不执行、所有按钮失活。因此直接读取 window.Capacitor.Plugins.App：原生环境正常挂载原生能力，
+// 非原生环境（纯浏览器 / 本地预览）安全置空、跳过即可，绝不影响核心阅读功能。
+// Capacitor 仅存在于原生外壳（Android WebView），由桥接层把插件挂在全局 window.Capacitor.Plugins 上。
+// 本项目 www/ 未打包，浏览器 / PWA 环境没有运行时、也没有 importmap，若用裸模块导入
+// '@capacitor/app' 会在模块求值阶段抛 “Failed to resolve module specifier” 导致整个 app.js
+// 不执行、所有按钮失活。因此直接读取 window.Capacitor.Plugins.App 并提供懒解析：原生环境正常
+// 挂载原生能力、非原生环境（纯浏览器 / 本地预览）安全返回 null、跳过即可，绝不影响核心阅读功能。
+function capacitorApp() {
+  try {
+    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) || null;
+  } catch (e) {
+    return null;
+  }
+}
 
 const FONT_STACK = {
   serif: 'Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif',
@@ -733,7 +750,8 @@ function goBack() {
 function handleRootBack() {
   const now = Date.now();
   if (now - lastBackTs < 2000) {
-    try { App.exitApp(); } catch (e) {}
+    const app = capacitorApp();
+    if (app) { try { app.exitApp(); } catch (e) {} }
   } else {
     lastBackTs = now;
     showToast('再按一次退出');
@@ -1389,9 +1407,12 @@ function bindEvents() {
   });
 
   // Android 硬件返回键：交给返回栈处理（不直退应用）。仅在原生外壳生效，Web 端无效（不影响）。
-  try {
-    App.addListener('backButton', () => goBack());
-  } catch (e) {}
+  const app = capacitorApp();
+  if (app) {
+    try {
+      app.addListener('backButton', () => goBack());
+    } catch (e) {}
+  }
   // 翻页动画开关
   $('set-flip').addEventListener('change', (e) => {
     settings.pageFlip = e.target.checked;
