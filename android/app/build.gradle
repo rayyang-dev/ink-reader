@@ -1,10 +1,11 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.inkstone.reader"
+    namespace = "com.rayyang.inkstone"
+    archivesBaseName = "Inkstone"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.inkreader.app"
+        applicationId "com.rayyang.inkstone"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 3
@@ -41,7 +42,7 @@ android {
             }
         }
         debug {
-            // 调试包使用独立包名 + 名称，绝不与正式版（com.inkreader.app）撞名或互相覆盖
+            // 调试包使用独立包名 + 名称，绝不与正式版（com.rayyang.inkstone）撞名或互相覆盖
             applicationIdSuffix ".debug"
             debuggable true
         }
