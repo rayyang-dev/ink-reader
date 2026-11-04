@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://github.com/rayyang-dev/ink-reader/releases"><img src="https://img.shields.io/badge/APK-下载-brightgreen" alt="APK"/></a>
-  <img src="https://img.shields.io/badge/platform-Android%20%2F%20PWA-blue" alt="platform"/>
+  <img src="https://img.shields.io/badge/platform-Android%20%2F%20HarmonyOS%20%2F%20PWA-blue" alt="platform"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license"/>
   <img src="https://img.shields.io/badge/format-EPUB%20%7C%20PDF%20%7C%20TXT%20%7C%20MOBI%20%7C%20FB2%20%7C%20HTML%20%7C%20DOCX-orange" alt="format"/>
 </p>
@@ -125,6 +125,16 @@
 前往 **[Releases](https://github.com/rayyang-dev/ink-reader/releases)** 下载 `Inkstone-release.apk`（已签名发布版，推荐）或 `Inkstone-debug.apk`（调试版），
 在手机上允许「未知来源」安装即可。无需登录、无后台联网。
 
+> 鸿蒙 NEXT（纯血）已移除 AOSP，**安卓 APK 无法原生安装**；若通过兼容容器（如卓易通）运行，文件选择器可用性取决于容器实现（已做兼容性加固，见下方「鸿蒙 NEXT」）。更稳妥的方式是安装下面的原生 .hap。
+
+### 鸿蒙 NEXT（原生 .hap）
+
+为 HarmonyOS NEXT 提供**原生 ArkWeb** 构建，书籍存储与导入均按系统 WebView 正常能力工作，不依赖兼容容器：
+1. 安装 **DevEco Studio**（含 HarmonyOS SDK）并用华为开发者账号签名；
+2. `npm install && npx cap sync harmony` 把 `www/` 同步进 `harmony/.../rawfile/www`；
+3. DevEco 内 `Build → Build HAP (debug)`，或命令行 `cd harmony && hvigorw assembleHap --mode module -p product=default -p buildMode=debug --no-daemon`；
+4. `hdc install` 或用 DevEco 直连真机运行。详见仓库 `harmony/` 工程与 `docs/华为上架清单.md`。
+
 ### Web / PWA
 
 直接用浏览器打开托管地址，或本地启动静态服务：
@@ -208,7 +218,7 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 
 - 前端：原生 ES Modules（无打包构建）、IndexedDB、Service Worker（PWA）
 - 解析：[fflate](https://github.com/101arrowz/fflate)（EPUB / DOCX）、[pdf.js v4](https://github.com/mozilla/pdf.js)（PDF）、自研 MOBI 解析器、原生 DOMParser（FB2 / HTML）
-- 原生壳：Capacitor 8（Android）
+- 原生壳：Capacitor 8（Android / HarmonyOS NEXT；`android/` 为安卓工程，`harmony/` 为鸿蒙原生 .hap 工程）
 - 测试：Node 原生 `node:test` + Playwright；含「设置 / 统计打卡 / 日周月聚合 / 书架元数据」全功能自测、真实浏览器冒烟（断言新控件已接入 DOM 并全页面截图）、解析 / 翻译 / 端到端，以及 FB2 / HTML / DOCX 三种新格式导入的端到端校验，全部通过
 
 ---
@@ -232,6 +242,7 @@ ink-reader/
 │       ├── mobidec.js              # 自研 MOBI 解析器（App 内直接解析，无需 Calibre）
 │       └── pdfview.js              # pdf.js 整页渲染（扫描型 PDF 整页显示）
 ├── android/                        # Capacitor 生成的 Android 原生工程（包名 com.rayyang.inkstone）
+├── harmony/                        # Capacitor 鸿蒙（HarmonyOS NEXT）原生工程，产出 .hap（rawfile/www 由 cap sync 生成，未进仓库）
 ├── docs/                           # 界面示意图 mockup.svg + 真实截图 screenshots/
 ├── tests/                          # Node 自测（features / 解析 / 翻译 / 端到端）+ Playwright 冒烟与截图
 ├── capacitor.config.json           # Capacitor 配置（appId / appName / webDir）
