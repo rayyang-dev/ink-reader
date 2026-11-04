@@ -78,7 +78,7 @@
     <!-- ============ 个人设置（独立页面） ============ -->
     <section id="view-settings" class="screen view hidden">
       <header class="page-head">
-        <button class="icon-btn" data-nav="shelf">‹ 书架</button>
+        <button class="icon-btn" data-nav="shelf" data-back="1">‹ 书架</button>
         <div class="page-head-title">设置</div>
         <span class="page-head-spacer"></span>
       </header>
@@ -202,7 +202,40 @@
           </div>
           <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按 AI 类型分组」后，书架空按书的首个 AI 标签归类，未分类的归入「未分类」。</p>
         </div>
+
+        <div class="settings-group">
+          <div class="group-title">关于与法律</div>
+          <div class="group-body">
+            <div class="field">
+              <label>法律声明（点击查看）</label>
+              <div class="legal-links">
+                <button class="btn legal-link" data-nav="legal" data-legal="privacy">隐私政策</button>
+                <button class="btn legal-link" data-nav="legal" data-legal="terms">用户协议</button>
+                <button class="btn legal-link" data-nav="legal" data-legal="permissions">权限说明</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>版本</label>
+              <div class="hint" style="margin:0">砚白 Inkstone · 本地优先阅读器</div>
+            </div>
+          </div>
+        </div>
       </div>
+    </section>
+
+    <!-- ============ 法律声明（隐私政策 / 用户协议 / 权限说明） ============ -->
+    <section id="view-legal" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="settings" data-back="1">‹ 设置</button>
+        <div class="page-head-title" id="legal-title">隐私政策</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="legal-tabs ai-tabs">
+        <button class="legal-tab active" data-legal="privacy">隐私政策</button>
+        <button class="legal-tab" data-legal="terms">用户协议</button>
+        <button class="legal-tab" data-legal="permissions">权限说明</button>
+      </div>
+      <div class="legal-body" id="legal-body"></div>
     </section>
 
     <!-- ============ 阅读器 ============ -->

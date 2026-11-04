@@ -1,0 +1,3118 @@
+砚白 Inkstone V1.0.0  源代码（前30页 + 后30页，每页≥50行）
+生成时间：2026-11-04   源文件数：13   源码总行数：4644   分页总数：93
+（软著提交件：前30页+后30页，每页≥50行）
+============================================================
+------ 第 1 页 / 共 93 页 ------
+/* ===== 文件: www/index.html ===== */
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#eceae2" />
+    <title>砚白 · Inkstone</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body data-theme="ink" data-font="serif">
+    <!-- ============ 书架 ============ -->
+    <section id="shelf" class="screen view">
+      <header class="shelf-head">
+        <div class="brand">
+          <span class="brand-mark">砚</span>
+          <div class="brand-text">
+            <h1>砚白 <span>Inkstone</span></h1>
+            <p class="subtitle">本地优先 · 墨水屏优化 · 无广告 · 零联网</p>
+          </div>
+        </div>
+      </header>
+      <div class="shelf-actions">
+        <span class="section-label">导入书籍</span>
+        <div class="import-grid">
+          <button id="import-txt" class="btn">＋ TXT</button>
+          <button id="import-epub" class="btn">＋ EPUB</button>
+          <button id="import-pdf" class="btn">＋ PDF</button>
+          <button id="import-mobi" class="btn">＋ MOBI</button>
+          <button id="import-fb2" class="btn">＋ FB2</button>
+          <button id="import-html" class="btn">＋ HTML</button>
+          <button id="import-docx" class="btn">＋ DOCX</button>
+        </div>
+        <input type="file" id="file-txt" accept=".txt,text/plain" hidden />
+        <input type="file" id="file-epub" accept=".epub,application/epub+zip" hidden />
+        <input type="file" id="file-pdf" accept=".pdf,application/pdf" hidden />
+        <input type="file" id="file-mobi" accept=".mobi,.azw,application/x-mobipocket-ebook" hidden />
+        <input type="file" id="file-fb2" accept=".fb2" hidden />
+        <input type="file" id="file-html" accept=".html,.htm,text/html" hidden />
+        <input type="file" id="file-docx" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+      </div>
+      <div id="tag-filter" class="tag-filter hidden"></div>
+      <div id="book-list" class="book-list"></div>
+      <div id="shelf-empty" class="shelf-empty hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5.5C10.5 4.3 8.4 3.8 5.5 4 4 4.1 3 5 3 6.4V18c0 1.2 1 2 2.4 1.9 2.6-.2 4.6.2 6.6 1.4V6.8C12 6.2 12 5.8 12 5.5z"/>
+          <path d="M12 5.5C13.5 4.3 15.6 3.8 18.5 4c1.5.1 2.5 1 2.5 2.4V18c0 1.2-1 2-2.4 1.9-2.6-.2-4.6.2-6.6 1.4V6.8C12 6.2 12 5.8 12 5.5z"/>
+          <path d="M12 5.5V21.7"/>
+        </svg>
+
+------ 第 2 页 / 共 93 页 ------
+        <h2>书架空空如也</h2>
+        <p>导入本地 TXT / EPUB / PDF / MOBI / FB2 / HTML / DOCX 开始阅读，<br/>支持拖拽，也支持手机/平板直接选文件。</p>
+      </div>
+      <div id="drop-hint" class="drop-hint">把 .txt / .epub / .pdf / .mobi / .azw / .fb2 / .html / .docx 拖到这里导入 · AZW3/KFX 请用 Calibre 转成 EPUB 再导入</div>
+    </section>
+
+    <!-- ============ 阅读统计（独立页面） ============ -->
+    <section id="view-stats" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="shelf">‹ 书架</button>
+        <div class="page-head-title">阅读统计</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="stats-tabs ai-tabs">
+        <button class="stats-tab active" data-stats-tab="day">日</button>
+        <button class="stats-tab" data-stats-tab="week">周</button>
+        <button class="stats-tab" data-stats-tab="month">月</button>
+      </div>
+      <div class="stats-body">
+        <div class="stats-summary">
+          <div class="ss-item"><div class="ss-val" id="ss-total">0 分钟</div><div class="ss-label">总时长</div></div>
+          <div class="ss-item"><div class="ss-val" id="ss-books">0 本</div><div class="ss-label">阅读书目</div></div>
+          <div class="ss-item"><div class="ss-val" id="ss-checkin">未打卡</div><div class="ss-label">打卡</div></div>
+        </div>
+        <div id="stats-booklist" class="stats-booklist"></div>
+      </div>
+    </section>
+
+    <!-- ============ 个人设置（独立页面） ============ -->
+    <section id="view-settings" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="shelf">‹ 书架</button>
+        <div class="page-head-title">设置</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="settings-body">
+        <div class="settings-group">
+          <div class="group-title">外观 · 皮肤</div>
+          <div class="group-body">
+            <div class="field">
+              <label>主题皮肤（点击即可切换）</label>
+              <div class="theme-swatches" id="theme-swatches"></div>
+            </div>
+            <div class="field">
+              <label>字体</label>
+              <div class="seg" id="seg-font">
+                <button data-val="serif">衬线</button>
+                <button data-val="sans">黑体</button>
+                <button data-val="mono">等宽</button>
+              </div>
+
+------ 第 3 页 / 共 93 页 ------
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">排版</div>
+          <div class="group-body">
+            <div class="field">
+              <label>字号 <span id="val-fontsize"></span></label>
+              <input type="range" id="set-fontsize" min="16" max="32" step="1" />
+            </div>
+            <div class="field">
+              <label>行距 <span id="val-lineheight"></span></label>
+              <input type="range" id="set-lineheight" min="1.2" max="2.4" step="0.05" />
+            </div>
+            <div class="field">
+              <label>边距 <span id="val-margin"></span></label>
+              <input type="range" id="set-margin" min="8" max="56" step="1" />
+            </div>
+            <div class="field">
+              <label>段距 <span id="val-paraspacing"></span></label>
+              <input type="range" id="set-paraspacing" min="0" max="1.6" step="0.1" />
+            </div>
+            <div class="field">
+              <label>字间距 <span id="val-letterspacing"></span></label>
+              <input type="range" id="set-letterspacing" min="-1" max="4" step="0.5" />
+            </div>
+            <div class="field row">
+              <label class="switch"><input type="checkbox" id="set-justify" /> 两端对齐</label>
+              <label class="switch"><input type="checkbox" id="set-indent" /> 首行缩进</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">屏幕与翻页</div>
+          <div class="group-body">
+            <div class="field">
+              <label class="switch"><input type="checkbox" id="set-flip" /> 翻页动画（翻书效果）</label>
+            </div>
+            <div class="field">
+              <label>整屏刷新（墨水屏清残影）</label>
+              <div class="seg c5" id="seg-regal">
+                <button data-val="0">关闭</button>
+                <button data-val="1">每页</button>
+                <button data-val="3">每3页</button>
+                <button data-val="6">每6页</button>
+                <button data-val="12">每12页</button>
+                <button data-val="999">每章</button>
+              </div>
+
+------ 第 4 页 / 共 93 页 ------
+            </div>
+          </div>
+          <p class="hint group-hint">开启「翻页动画」后，前后翻页会以翻书页的方式过渡（手机端更自然）；墨水屏设备若觉得残影明显，可关闭动画并保留「整屏刷新」清残影。</p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">AI 引擎</div>
+          <div class="group-body">
+            <div class="field">
+              <label>AI 引擎（翻译 / 摘要 / 问答 / 标签 / 笔记 共用）</label>
+              <div class="seg c5" id="seg-translate-provider">
+                <button data-val="none">关闭</button>
+                <button data-val="mock">演示</button>
+                <button data-val="deepl">DeepL</button>
+                <button data-val="google">Google</button>
+                <button data-val="llm">AI 大模型</button>
+              </div>
+            </div>
+            <div class="field" id="field-tkey">
+              <label>API Key（仅存本机）</label>
+              <input type="password" id="set-tkey" placeholder="填入对应提供方的 Key" autocomplete="off" />
+            </div>
+            <div class="field" id="field-tbase">
+              <label>AI 接口地址 / 模型</label>
+              <input type="text" id="set-tbase" placeholder="https://api.openai.com/v1" style="margin-bottom:8px" autocomplete="off" />
+              <input type="text" id="set-tmodel" placeholder="模型名，如 gpt-4o-mini / deepseek-chat" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label>默认翻译方向</label>
+              <div class="seg" id="seg-tdir">
+                <button data-val="auto">自动</button>
+                <button data-val="zh2en">中→英</button>
+                <button data-val="en2zh">英→中</button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="switch"><input type="checkbox" id="set-ai-auto" /> 导入后自动生成导读</label>
+            </div>
+          </div>
+          <p class="hint group-hint">AI 引擎默认关闭，不影响离线阅读。启用「AI 大模型」并填 Key 后，阅读页可选中文字「译 / 解释」、打开「AI 助手」生成全书或本章导读、书中问答、人物脉络笔记、智能书架标签、段落双语对照。API Key 仅存本机，本应用无服务器；支持任意 OpenAI 兼容接口（DeepSeek / 通义 / 本地 Ollama）。</p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">阅读与书架</div>
+          <div class="group-body">
+            <div class="field">
+              <label>阅读打卡阈值 <span id="val-checkin"></span></label>
+              <input type="range" id="set-checkin" min="1" max="60" step="1" />
+            </div>
+            <div class="field">
+
+------ 第 5 页 / 共 93 页 ------
+              <label class="switch"><input type="checkbox" id="set-group-tag" /> 书架按 AI 类型分组</label>
+            </div>
+          </div>
+          <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按 AI 类型分组」后，书架空按书的首个 AI 标签归类，未分类的归入「未分类」。</p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">关于与法律</div>
+          <div class="group-body">
+            <div class="field">
+              <label>法律声明（点击查看）</label>
+              <div class="legal-links">
+                <button class="btn legal-link" data-nav="legal" data-legal="privacy">隐私政策</button>
+                <button class="btn legal-link" data-nav="legal" data-legal="terms">用户协议</button>
+                <button class="btn legal-link" data-nav="legal" data-legal="permissions">权限说明</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>版本</label>
+              <div class="hint" style="margin:0">砚白 Inkstone · 本地优先阅读器</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 法律声明（隐私政策 / 用户协议 / 权限说明） ============ -->
+    <section id="view-legal" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="settings">‹ 设置</button>
+        <div class="page-head-title" id="legal-title">隐私政策</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="legal-tabs ai-tabs">
+        <button class="legal-tab active" data-legal="privacy">隐私政策</button>
+        <button class="legal-tab" data-legal="terms">用户协议</button>
+        <button class="legal-tab" data-legal="permissions">权限说明</button>
+      </div>
+      <div class="legal-body" id="legal-body"></div>
+    </section>
+
+    <!-- ============ 阅读器 ============ -->
+    <section id="reader" class="screen hidden">
+      <div id="topbar" class="topbar">
+        <button id="btn-back" class="icon-btn">← 书架</button>
+        <div id="chapter-title" class="chapter-title"></div>
+        <button id="btn-toc-top" class="icon-btn">目录</button>
+      </div>
+
+      <div id="page-viewport" class="page-viewport">
+
+------ 第 6 页 / 共 93 页 ------
+        <div id="page" class="page"></div>
+      </div>
+
+      <div id="bottombar" class="bottombar">
+        <div class="bb-group bb-nav">
+          <button id="btn-prev" class="icon-btn" title="上一页">‹</button>
+          <div id="progress" class="progress"></div>
+          <button id="btn-next" class="icon-btn" title="下一页">›</button>
+        </div>
+        <span class="bar-sep"></span>
+        <div class="bb-group bb-tools">
+          <button id="btn-bookmark" class="icon-btn">书签</button>
+          <button id="btn-ai" class="icon-btn">AI</button>
+          <button id="btn-toc" class="icon-btn">目录</button>
+        </div>
+      </div>
+
+      <!-- 侧滑面板 -->
+      <aside id="panel-toc" class="panel">
+        <div class="panel-head"><span>目录</span><button class="panel-close" data-close="panel-toc">✕</button></div>
+        <div id="toc-list" class="toc-list"></div>
+      </aside>
+      <aside id="panel-bookmark" class="panel">
+        <div class="panel-head"><span>书签</span><button class="panel-close" data-close="panel-bookmark">✕</button></div>
+        <button id="bm-add" class="btn" style="margin:12px 16px; width:calc(100% - 32px)">＋ 标记当前页</button>
+        <div id="bookmark-list" class="bookmark-list"></div>
+      </aside>
+      <aside id="panel-ai" class="panel">
+        <div class="panel-head"><span>AI 助手</span><button class="panel-close" data-close="panel-ai">✕</button></div>
+        <div class="ai-tabs">
+          <button class="ai-tab active" data-ai-tab="guide">导读</button>
+          <button class="ai-tab" data-ai-tab="qa">问答</button>
+          <button class="ai-tab" data-ai-tab="notes">笔记</button>
+          <button class="ai-tab" data-ai-tab="bilingual">双语</button>
+        </div>
+        <div class="ai-body">
+          <div class="ai-pane" data-pane="guide">
+            <p class="ai-hint">基于本书内容生成「内容概要 + 阅读导读」。已生成的导读会缓存到本书，离线也能再看。</p>
+            <button id="ai-gen-guide" class="btn btn-block">生成全书导读</button>
+            <button id="ai-gen-guide-ch" class="btn btn-block subtle">生成本章导读</button>
+            <div id="ai-guide-out" class="ai-markdown"></div>
+          </div>
+          <div class="ai-pane hidden" data-pane="qa">
+            <div class="ai-qa-input">
+              <textarea id="ai-qa-question" placeholder="就本书提问，例如：主角的动机是什么？这一章讲了什么？"></textarea>
+              <button id="ai-qa-ask" class="btn btn-block">提问</button>
+            </div>
+            <div id="ai-qa-out" class="ai-qa-list"></div>
+          </div>
+          <div class="ai-pane hidden" data-pane="notes">
+
+------ 第 7 页 / 共 93 页 ------
+            <p class="ai-hint">抽取人物关系、关键脉络与核心要点，生成结构化阅读笔记。</p>
+            <button id="ai-gen-notes" class="btn btn-block">生成阅读笔记</button>
+            <div id="ai-notes-out"></div>
+          </div>
+          <div class="ai-pane hidden" data-pane="bilingual">
+            <p class="ai-hint">把当前页拆成段落，逐段翻译成中文/英文对照（依赖上面的翻译方向设置）。</p>
+            <button id="ai-bilingual-gen" class="btn btn-block">本页双语对照</button>
+            <div id="ai-bilingual-out"></div>
+          </div>
+        </div>
+      </aside>
+
+      <div id="panel-mask" class="panel-mask"></div>
+
+      <!-- Regal 整屏清残影闪光 -->
+      <div id="refresh-flash" class="refresh-flash"></div>
+
+      <!-- 选中文字：工具条（译 / AI 解释） -->
+      <div id="sel-bar" class="sel-bar hidden">
+        <button id="sel-translate">译</button>
+        <button id="sel-ai">AI 解释</button>
+      </div>
+      <div id="translate-pop" class="hidden">
+        <div class="tp-row">
+          <span id="translate-dir" class="tp-dir"></span>
+          <button id="translate-swap" class="hidden">⇄ 反向</button>
+        </div>
+        <div id="translate-result"></div>
+        <div class="tp-actions">
+          <button id="translate-copy" class="hidden">复制</button>
+          <button id="translate-close">关闭</button>
+        </div>
+      </div>
+      <div id="ai-explain-pop" class="hidden">
+        <div class="tp-row">
+          <span class="tp-dir">AI 解释</span>
+          <button id="ai-explain-close">关闭</button>
+        </div>
+        <div id="ai-explain-text"></div>
+      </div>
+    </section>
+
+    <!-- ============ 底部导航栏 ============ -->
+    <nav id="tabbar">
+      <button class="tab active" data-view="shelf">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v15H5.5A2.5 2.5 0 0 0 3 20.5V5.5zM21 5.5A2.5 2.5 0 0 0 18.5 3H13v15h5.5A2.5 2.5 0 0 1 21 20.5V5.5z"/></svg>
+        <span>书架</span>
+      </button>
+      <button class="tab" data-view="stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12 20V9M16 20v-9"/></svg>
+
+------ 第 8 页 / 共 93 页 ------
+        <span>统计</span>
+      </button>
+      <button class="tab" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M19.2 4.8l-1.8 1.8M6.6 17.4l-1.8 1.8"/></svg>
+        <span>设置</span>
+      </button>
+    </nav>
+
+    <div id="toast" class="hidden"></div>
+
+    <!-- EPUB 解压库（UMD 全局 fflate） -->
+    <script src="js/vendor/fflate.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
+
+/* ===== 文件: www/css/style.css ===== */
+/* ===== 砚白 Inkstone 样式 =====
+   设计原则（针对墨水屏）：零动画 / 瞬时切换、纸感高对比、排版参数全部变量化。 */
+
+* {
+  box-sizing: border-box;
+  /* 墨水屏最忌动画导致的重绘残影 —— 全局禁用动画与过渡 */
+  transition: none !important;
+  animation: none !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ---------- 主题（精简为 3 套，各有专属翻书动画） ---------- */
+/* 墨水风：宣纸暖白底 + 墨青字；翻页为「毛笔墨迹淡化 → 新页字浮现」 */
+body[data-theme="ink"] {
+  --bg: #f4eddc; --fg: #202b31; --fg-soft: #5d6b72;
+  --bar-bg: #e8dec8; --bar-fg: #202b31; --accent: #2f6f7a; --border: #d3c8b1;
+}
+/* 简约：近白极简、无装饰；翻页为干净的位移淡入淡出 */
+body[data-theme="simple"] {
+  --bg: #f7f6f2; --fg: #1f1f1f; --fg-soft: #6a6a6a;
+  --bar-bg: #efeee9; --bar-fg: #1f1f1f; --accent: #444444; --border: #e0ded7;
+}
+/* 竹简：浅青绿底 + 青绿点缀；翻页为竹片依次翻开立起露出新页 */
+body[data-theme="bamboo"] {
+
+------ 第 9 页 / 共 93 页 ------
+  --bg: #e2efe1; --fg: #243a2e; --fg-soft: #5b7567;
+  --bar-bg: #d3e4d1; --bar-fg: #243a2e; --accent: #1f9e83; --border: #bcd6b6;
+}
+
+/* 墨水风：宣纸肌理——暖白纸底 + 手工纸的色温不均（浓淡斑块）+ 细颗粒纤维纸纹。
+   叠层为静态（无动画，符合墨水屏零动画原则），用 multiply 叠加于纸底之上。 */
+body[data-theme="ink"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: multiply;
+  background-image:
+    /* 手工宣纸的暖色不均：边角略暗、中心微透 */
+    radial-gradient(68% 52% at 16% 10%, rgba(193,166,116,0.10), transparent 60%),
+    radial-gradient(60% 48% at 86% 90%, rgba(150,120,78,0.08), transparent 60%),
+    radial-gradient(120% 95% at 50% 38%, rgba(255,251,242,0), rgba(206,184,140,0.13) 100%),
+    /* 细颗粒纸纹：高频噪点模拟纤维与纸面凹凸 */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/></svg>");
+  background-size: 100% 100%, 100% 100%, 100% 100%, 300px 300px;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+}
+
+/* 竹简：极淡竖向竹纹，呼应竹简的编联肌理 */
+body[data-theme="bamboo"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+    background-image: repeating-linear-gradient(90deg,
+    rgba(40,120,90,0) 0, rgba(40,120,90,0) 25px,
+    rgba(40,120,90,0.07) 25px, rgba(40,120,90,0.07) 26px);
+}
+
+/* ---------- 各主题排版气质（在统一排版变量之上追加专属特色） ---------- */
+/* 简约：纯无衬线、去装饰，标题与正文同族、无分割线 */
+body[data-theme="simple"] .page,
+body[data-theme="simple"] .measure-page {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+body[data-theme="simple"] .page h1, body[data-theme="simple"] .page h2, body[data-theme="simple"] .page h3,
+body[data-theme="simple"] .measure-page h1, body[data-theme="simple"] .measure-page h2, body[data-theme="simple"] .measure-page h3 {
+  border: none; color: var(--fg); font-weight: 700;
+}
+/* 竹简：衬线 + 右侧“编绳”竖线，呼应竹简装帧 */
+body[data-theme="bamboo"] .page,
+
+------ 第 10 页 / 共 93 页 ------
+body[data-theme="bamboo"] .measure-page {
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+}
+body[data-theme="bamboo"] .page::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 14px; width: 2px;
+  background: linear-gradient(180deg, rgba(31,158,131,0), rgba(31,158,131,0.55), rgba(31,158,131,0));
+  pointer-events: none;
+}
+/* 墨水风：标题下方一道淡墨短横，像落笔的一划 */
+body[data-theme="ink"] .page h1, body[data-theme="ink"] .page h2,
+body[data-theme="ink"] .measure-page h1, body[data-theme="ink"] .measure-page h2 {
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding-bottom: 0.18em; display: inline-block;
+}
+
+body { background: var(--bg); color: var(--fg); }
+
+.hidden { display: none !important; }
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 书架 ---------- */
+#shelf {
+  padding: 26px 20px calc(76px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+/* 品牌区 */
+.shelf-head { margin-bottom: 26px; }
+.brand { display: flex; align-items: center; gap: 15px; }
+.brand-mark {
+  flex: 0 0 auto;
+  width: 52px; height: 52px;
+  border-radius: 15px;
+  background: var(--accent);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
+  font-size: 28px; font-weight: 700;
+}
+.brand-text h1 {
+  font-size: 27px; margin: 0; letter-spacing: 0.5px; font-weight: 700;
+}
+.brand-text h1 span {
+  font-family: Georgia, serif; font-weight: 400; font-size: 17px;
+
+------ 第 11 页 / 共 93 页 ------
+  color: var(--fg-soft); margin-left: 5px; letter-spacing: 0;
+}
+.subtitle { margin: 3px 0 0; color: var(--fg-soft); font-size: 13px; }
+
+/* 导入区分组 */
+.section-label {
+  display: block;
+  font-size: 12px; color: var(--fg-soft);
+  letter-spacing: 1px; margin-bottom: 9px;
+}
+.shelf-actions { margin-bottom: 22px; }
+.import-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.btn {
+  padding: 11px 16px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+.btn:active { background: var(--fg); color: var(--bg); }
+.btn-ghost { color: var(--fg-soft); }
+.import-grid .btn { width: 100%; }
+.btn-block { width: 100%; }
+.btn-primary {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  font-weight: 600;
+}
+.btn-primary:active { opacity: 0.7; }
+
+/* 空状态（居中、填满留白） */
+.shelf-empty {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 24px;
+  color: var(--fg-soft);
+}
+
+------ 第 12 页 / 共 93 页 ------
+.shelf-empty svg { width: 74px; height: 74px; color: color-mix(in srgb, var(--fg) 55%, var(--bg)); }
+.shelf-empty h2 { margin: 0; font-size: 18px; color: var(--fg); font-weight: 600; }
+.shelf-empty p { margin: 0; font-size: 14px; line-height: 1.8; max-width: 280px; }
+
+.book-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+.book-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  position: relative;
+}
+.book-card:active { background: var(--fg); color: var(--bg); }
+.book-card:active .bc-meta,
+.book-card:active .bc-cover { color: var(--bg); }
+/* 封面色块：取书名首字的拟物书封 */
+.bc-cover {
+  height: 98px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
+  font-size: 40px; font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 20%, var(--bg));
+  color: var(--accent);
+  border-bottom: 1px solid var(--hairline);
+}
+.bc-body { padding: 11px 12px 13px; display: flex; flex-direction: column; gap: 5px; }
+.bc-title { font-size: 15px; font-weight: 600; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bc-meta { font-size: 12px; color: var(--fg-soft); }
+.bc-del {
+  position: absolute; top: 7px; right: 7px;
+  font-size: 12px; line-height: 1;
+  color: var(--fg-soft);
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+.bc-del:active { background: var(--fg); color: var(--bg); }
+
+.drop-hint {
+
+------ 第 13 页 / 共 93 页 ------
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--fg-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.drop-hint.over { background: var(--fg); color: var(--bg); }
+
+/* ---------- 阅读器 ---------- */
+#reader { background: var(--bg); }
+.topbar, .bottombar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border-bottom: 1px solid var(--hairline);
+  min-height: 46px;
+  z-index: 5;
+}
+.topbar { top: 0; }
+.bottombar { bottom: 0; border-bottom: none; border-top: 1px solid var(--hairline); }
+.chapter-title {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+.icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 14px;
+  padding: 6px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 7px;
+}
+
+------ 第 14 页 / 共 93 页 ------
+.icon-btn:active { background: var(--fg); color: var(--bg); }
+.progress {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: var(--bar-fg);
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+.bar-sep { width: 1px; height: 18px; background: var(--hairline); flex: 0 0 auto; }
+.bb-group { display: flex; align-items: center; gap: 4px; }
+.bb-nav { flex: 1 1 auto; }
+.bb-tools { gap: 2px; }
+
+/* 阅读时隐藏上下栏（点击屏幕中部唤出） */
+#reader.hide-chrome .topbar,
+#reader.hide-chrome .bottombar { display: none; }
+
+.page-viewport {
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  perspective: 1500px;
+}
+#page { transform-style: preserve-3d; backface-visibility: hidden; transform-origin: center center; position: relative; }
+/* 翻书过程中覆盖在页面上的渐变阴影：书脊一侧偏暗，模拟书页翻动时的明暗与弧度 */
+#page.flipping::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: var(--flip-shade, none);
+}
+
+/* ---------- 主题专属翻书动画（keyframes 需压过全局 animation:none!important） ---------- */
+/* 墨水风：毛笔墨迹横扫后淡化（覆盖层由 flipInk 注入） */
+#reader .ink-flip { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+#reader .ink-flip svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#reader .ink-stroke,
+#reader .ink-stroke2 { fill: rgba(18,15,11,0.85); filter: blur(2.5px); transform-origin: left center; opacity: 0;
+  animation: ink-sweep 1.4s cubic-bezier(.22,.61,.36,1) forwards !important; }
+#reader .ink-stroke2 { fill: rgba(18,15,11,0.5); filter: blur(2px); animation-delay: .1s !important; }
+#reader .ink-splat { fill: rgba(18,15,11,0.6); opacity: 0;
+  animation: ink-splat 1.4s ease-out forwards !important; }
+@keyframes ink-sweep {
+  0%   { opacity: 0; transform: scaleX(.015); }
+  12%  { opacity: .95; }
+  40%  { opacity: .9; transform: scaleX(1); }
+
+------ 第 15 页 / 共 93 页 ------
+  55%  { opacity: 0; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+@keyframes ink-splat {
+  0%   { opacity: 0; }
+  30%  { opacity: .55; }
+  100% { opacity: 0; }
+}
+
+/* 竹简：卷轴收起——顶部竹轴，旧页向上卷起收起、新页向下舒卷 */
+#reader .bamboo-roll { position:absolute; left:0; right:0; top:0; height:18px; z-index:6; pointer-events:none;
+  background: linear-gradient(180deg, rgba(60,140,105,0), #a9cda0 35%, #d9ecd2 50%, #a9cda0 65%, rgba(60,140,105,0));
+  border-radius:9px; box-shadow:0 0 12px rgba(40,120,90,.35), inset 0 0 0 1px rgba(60,140,105,.25); }
+
+/* 简约真实翻书：克隆出的“翻走的书页”及其明暗阴影（绕书脊旋出，露出底页） */
+#reader .flip-leaf { position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  backface-visibility: hidden; transform-style: preserve-3d; }
+#reader .flip-shade { position: absolute; inset: 0; pointer-events: none; background: var(--flip-shade, none); }
+
+
+/* 排版变量默认值（JS 会在 body 上覆盖这些值，.page 仅引用，不重声明） */
+:root {
+  --r-font-size: 20px;
+  --r-line-height: 1.75;
+  --r-font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+  --r-letter-spacing: 0px;
+  --r-para-space: 0.7em;
+  --r-indent: 2em;
+  --r-margin: 22px;
+  --r-justify: left;
+
+  /* 苹果式设计令牌：发丝线、圆角、分段控件轨道（基于主题 fg/bg 动态生成） */
+  --hairline: color-mix(in srgb, var(--fg) 13%, var(--bg));
+  --track: color-mix(in srgb, var(--fg) 17%, var(--bg));
+  --radius: 14px;
+}
+
+/* 阅读页：排版变量由 body 上的内联值驱动（测量容器继承同样规则） */
+.page, .measure-page {
+  font-size: var(--r-font-size);
+  line-height: var(--r-line-height);
+  font-family: var(--r-font-family);
+  letter-spacing: var(--r-letter-spacing);
+  color: var(--fg);
+  text-align: var(--r-justify);
+}
+.page {
+  position: absolute;
+  inset: 0;
+  padding: var(--r-margin, 22px);
+
+------ 第 16 页 / 共 93 页 ------
+  overflow: hidden;
+}
+.measure-page {
+  position: static;
+  overflow: hidden;
+  padding: var(--r-margin, 22px);
+}
+.page p, .measure-page p {
+  margin: 0 0 var(--r-para-space) 0;
+  text-indent: var(--r-indent);
+  text-align: inherit;
+}
+body[data-noindent="1"] .page p,
+body[data-noindent="1"] .measure-page p { text-indent: 0; }
+.page h1, .page h2, .page h3, .page h4,
+.measure-page h1, .measure-page h2, .measure-page h3, .measure-page h4 {
+  margin: 0.6em 0 0.4em;
+  line-height: 1.35;
+  font-weight: 700;
+  text-indent: 0;
+}
+.page img, .measure-page img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.4em auto;
+}
+.page blockquote, .measure-page blockquote {
+  margin: 0.6em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--border);
+  color: var(--fg-soft);
+  text-indent: 0;
+}
+
+/* 测量容器（离屏） */
+.measure-host {
+  position: fixed;
+  left: -99999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ---------- 侧滑面板 ---------- */
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+
+------ 第 17 页 / 共 93 页 ------
+  width: min(82%, 360px);
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border-left: 1px solid var(--border);
+  z-index: 30;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.panel.open { display: flex; }
+.panel-head {
+  position: sticky; top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bar-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 600;
+}
+.panel-close {
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 7px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+.panel-close:active { background: var(--fg); color: var(--bg); }
+.toc-list, .bookmark-list { padding: 8px 0; }
+.toc-item, .bm-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.toc-item:active, .bm-item:active { background: var(--fg); color: var(--bg); }
+.bm-item .bm-del { font-size: 12px; color: var(--fg-soft); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+.toc-item.active { color: var(--accent); font-weight: 600; }
+.empty-tip { padding: 24px 16px; color: var(--fg-soft); font-size: 14px; text-align: center; }
+
+/* 设置面板：iOS 分组卡片 */
+.settings-body { padding: 16px 16px 44px; }
+
+------ 第 18 页 / 共 93 页 ------
+.settings-group { margin-bottom: 22px; }
+.group-title {
+  font-size: 12px;
+  color: var(--fg-soft);
+  letter-spacing: 0.5px;
+  margin: 0 6px 8px;
+}
+.group-body {
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.group-body .field {
+  margin: 0;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.group-body .field:last-child { border-bottom: none; }
+.group-hint {
+  margin: 8px 6px 0;
+  font-size: 12px;
+  color: var(--fg-soft);
+  line-height: 1.7;
+}
+
+/* 组内字段 */
+.field > label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+  margin-bottom: 9px;
+  color: var(--bar-fg);
+}
+.field > label span {
+  color: var(--fg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.field.row { display: flex; gap: 18px; }
+.field input[type="range"] {
+  width: 100%;
+  height: 26px;
+  accent-color: var(--fg);
+}
+/* iOS 风格开关 */
+.switch { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.switch input[type="checkbox"] {
+  -webkit-appearance: none;
+
+------ 第 19 页 / 共 93 页 ------
+  appearance: none;
+  flex: 0 0 auto;
+  width: 44px; height: 26px;
+  border-radius: 13px;
+  background: var(--track);
+  position: relative;
+  cursor: pointer;
+  border: none;
+}
+.switch input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+}
+.switch input[type="checkbox"]:checked { background: var(--accent); }
+.switch input[type="checkbox"]:checked::after { left: 20px; }
+
+/* 分段控件：高对比圆角块（墨水屏可读性优先，瞬时无动画） */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.seg.c5 { grid-template-columns: repeat(5, 1fr); }
+.seg button {
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--bar-fg);
+  border-radius: 9px;
+  padding: 9px 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.2;
+}
+.seg.c5 button { font-size: 13px; padding: 9px 2px; }
+.seg button.active {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  font-weight: 600;
+}
+.hint { font-size: 12px; color: var(--fg-soft); line-height: 1.7; }
+
+.panel-mask {
+  position: absolute;
+
+------ 第 20 页 / 共 93 页 ------
+  inset: 0;
+  background: rgba(0,0,0,0.28);
+  z-index: 20;
+  display: none;
+}
+.panel-mask.open { display: block; }
+
+/* Regal 整屏清残影：模拟电子墨水屏的硬件整屏刷新 —— 整屏瞬间反色（黑白翻转）一下，
+   这是墨水屏最具辨识度的“刷新”动作。全局 transition/animation 已禁用，故为瞬时翻转、无渐变。 */
+#reader.regal { filter: invert(1) contrast(1.04); }
+
+/* 保留的占位层（不承载刷新效果，避免误用） */
+.refresh-flash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+/* PDF 整页图片（扫描型 PDF 渲染为图，整页显示、不滚动） */
+.pdfpage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.pdfpage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 设置面板里的文本/密码输入框（Key、接口地址、模型名） */
+.field input[type="text"],
+.field input[type="password"] {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+/* 选中文字工具条：译 / AI 解释（两个并列高对比按钮） */
+.sel-bar {
+
+------ 第 21 页 / 共 93 页 ------
+  position: absolute;
+  z-index: 25;
+  display: flex;
+  gap: 0;
+  background: var(--bar-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sel-bar button {
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 14px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.sel-bar button + button { border-left: 1px solid var(--border); }
+.sel-bar button:active { background: var(--fg); color: var(--bg); }
+.sel-bar button:first-child:active { background: var(--accent); color: #fff; }
+#translate-pop {
+  position: absolute;
+  z-index: 25;
+  left: 12px;
+  right: 12px;
+  bottom: 50px;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+#translate-pop .tp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#translate-pop .tp-dir { font-size: 12px; color: var(--fg-soft); }
+#translate-pop .tp-actions { margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end; }
+#translate-pop button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--bar-fg);
+  border-radius: 7px;
+  font-size: 12px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+#translate-pop button:active { background: var(--fg); color: var(--bg); }
+#translate-result { white-space: pre-wrap; word-break: break-word; }
+
+/* AI 解释弹层（与翻译弹层同形） */
+
+------ 第 22 页 / 共 93 页 ------
+#ai-explain-pop {
+  position: absolute;
+  z-index: 25;
+  left: 12px;
+  right: 12px;
+  bottom: 50px;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-size: 14px;
+  line-height: 1.65;
+  max-height: 60%;
+  overflow-y: auto;
+}
+#ai-explain-pop .tp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#ai-explain-pop .tp-dir { font-size: 12px; color: var(--fg-soft); }
+#ai-explain-pop button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--bar-fg);
+  border-radius: 7px;
+  font-size: 12px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+#ai-explain-pop button:active { background: var(--fg); color: var(--bg); }
+#ai-explain-text { white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- AI 面板 ---------- */
+.ai-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: var(--bar-bg);
+}
+.ai-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+  font-size: 14px;
+  padding: 13px 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.ai-tab.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
+.ai-tab:active { background: var(--fg); color: var(--bg); }
+
+------ 第 23 页 / 共 93 页 ------
+.ai-body { padding: 14px 16px 40px; }
+.ai-hint { font-size: 12px; color: var(--fg-soft); line-height: 1.7; margin: 0 0 12px; }
+.ai-pane .btn-block { margin-bottom: 10px; }
+.btn.subtle { color: var(--fg-soft); }
+
+/* AI 生成的 Markdown 排版（在面板内） */
+.ai-markdown { font-size: 14px; line-height: 1.75; word-break: break-word; }
+.ai-markdown h2 { font-size: 16px; margin: 14px 0 8px; }
+.ai-markdown h3 { font-size: 15px; margin: 12px 0 7px; color: var(--accent); }
+.ai-markdown h4 { font-size: 14px; margin: 10px 0 6px; }
+.ai-markdown p { margin: 0 0 9px; }
+.ai-markdown ul { margin: 0 0 10px; padding-left: 20px; }
+.ai-markdown li { margin: 3px 0; }
+.ai-markdown b { font-weight: 700; }
+
+/* 问答 */
+.ai-qa-input { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.ai-qa-input textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.ai-qa-list { display: flex; flex-direction: column; gap: 12px; }
+.qa-item { border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+.qa-q { padding: 9px 12px; background: color-mix(in srgb, var(--accent) 14%, var(--bg)); font-weight: 600; font-size: 14px; }
+.qa-a { padding: 11px 12px; font-size: 14px; line-height: 1.7; }
+.qa-a p { margin: 0 0 8px; }
+.qa-a ul { margin: 0 0 8px; padding-left: 20px; }
+.qa-a li { margin: 2px 0; }
+.qa-a b { font-weight: 700; }
+
+/* 笔记卡片 */
+.note-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 12px; }
+.note-card { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 11px; }
+.note-card .nc-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+.note-card .nc-role { font-size: 12px; color: var(--fg-soft); }
+.note-card .nc-rel { font-size: 12px; color: var(--accent); margin-top: 3px; line-height: 1.5; }
+.note-list { padding-left: 20px; margin: 0 0 12px; }
+.note-list li { margin: 4px 0; font-size: 14px; line-height: 1.6; }
+.ai-markdown h4, #ai-notes-out h4 { color: var(--accent); }
+#ai-notes-out h4 { font-size: 14px; margin: 12px 0 6px; }
+#ai-notes-out ul { padding-left: 20px; margin: 0 0 12px; }
+
+------ 第 24 页 / 共 93 页 ------
+#ai-notes-out li { margin: 4px 0; font-size: 14px; line-height: 1.6; }
+
+/* 双语对照 */
+.bi-row { border-bottom: 1px solid var(--hairline); padding: 9px 0; }
+.bi-row:last-child { border-bottom: none; }
+.bi-orig { font-size: 14px; line-height: 1.7; margin-bottom: 5px; }
+.bi-trans { font-size: 14px; line-height: 1.7; color: var(--fg-soft); border-left: 2px solid var(--accent); padding-left: 9px; }
+
+/* ---------- 书架标签 / 筛选 ---------- */
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.tag-chip {
+  border: 1px solid var(--hairline);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.tag-chip.active { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.tag-chip.sm { padding: 2px 9px; font-size: 11px; cursor: default; }
+.bc-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.bc-ai-btn {
+  margin-top: 10px;
+  align-self: flex-start;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+.bc-ai-btn:active { background: var(--accent); color: #fff; }
+.bc-ai-btn.busy { opacity: 0.6; }
+
+
+/* ---------- 阅读统计面板 ---------- */
+.stats-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--bar-fg);
+
+------ 第 25 页 / 共 93 页 ------
+  font-size: 14px;
+  padding: 13px 4px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.stats-tab.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
+.stats-tab:active { background: var(--fg); color: var(--bg); }
+.stats-body { padding: 14px 16px 40px; }
+.stats-summary { display: flex; gap: 10px; margin-bottom: 18px; }
+.ss-item {
+  flex: 1;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px 6px;
+  text-align: center;
+  background: var(--bg);
+}
+.ss-val { font-size: 17px; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.ss-label { font-size: 12px; color: var(--fg-soft); margin-top: 4px; }
+.stats-booklist { display: flex; flex-direction: column; }
+.stats-book-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 14px;
+}
+.stats-book-row:last-child { border-bottom: none; }
+.sb-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-time { flex: 0 0 auto; color: var(--fg-soft); font-variant-numeric: tabular-nums; margin-left: 10px; }
+
+/* 分组书架：外层容器在分组态下改为块级，内层 .book-list 仍是卡片网格 */
+#book-list.grouped { display: block; }
+.group-header {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin: 16px 2px 8px;
+}
+
+/* 打卡成功提示（墨水屏：无动画、固定底部居中高对比胶囊） */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  transform: translateX(-50%);
+  background: var(--fg);
+
+------ 第 26 页 / 共 93 页 ------
+  color: var(--bg);
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  z-index: 60;
+  max-width: 80%;
+  text-align: center;
+}
+
+/* ---------- 移动端 / 手机优化 ---------- */
+@media (max-width: 480px) {
+  .shelf-head { margin-bottom: 18px; }
+  .brand-text h1 { font-size: 21px; }
+  .subtitle { font-size: 12px; }
+  .book-list { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; }
+  .bc-cover { height: 78px; font-size: 32px; }
+  .bc-title { font-size: 14px; }
+  :root { --r-margin: 16px; }
+  .page, .measure-page { padding: 16px; }
+  .topbar, .bottombar { padding-left: 8px; padding-right: 8px; gap: 6px; }
+  .icon-btn { padding: 7px 6px; font-size: 13px; }
+  .chapter-title { font-size: 12px; }
+  .progress { font-size: 12px; }
+  .panel { width: min(88%, 320px); }
+  .seg button { font-size: 13px; padding: 8px 2px; }
+  .seg.c5 button { font-size: 12px; }
+  .field.row { flex-direction: column; gap: 10px; }
+}
+
+/* ---------- 底部导航栏 ---------- */
+#tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border-top: 1px solid var(--hairline);
+  z-index: 9;
+}
+#tabbar .tab {
+  flex: 1 1 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  border: none; background: transparent; color: var(--fg-soft);
+  cursor: pointer; font-size: 11px; line-height: 1.1;
+  padding: 0;
+}
+#tabbar .tab svg { width: 23px; height: 23px; }
+
+------ 第 27 页 / 共 93 页 ------
+#tabbar .tab.active { color: var(--accent); font-weight: 700; }
+#tabbar .tab:active { opacity: 0.6; }
+body.reader-active #tabbar { display: none; }
+
+/* ---------- 独立页面通用头部（统计 / 设置） ---------- */
+.page-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border-bottom: 1px solid var(--hairline);
+  min-height: 50px;
+  flex: 0 0 auto;
+}
+.page-head-title { font-size: 16px; font-weight: 600; }
+.page-head-spacer { width: 56px; }
+
+/* 法律声明页（隐私政策 / 用户协议 / 权限说明） */
+.legal-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.legal-links .legal-link { width: 100%; font-size: 14px; padding: 11px 4px; line-height: 1.3; }
+.legal-body {
+  flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
+  font-size: 14px; line-height: 1.85; color: var(--fg);
+}
+.legal-body h2 { font-size: 15px; font-weight: 700; margin: 1.1em 0 .5em; line-height: 1.4; }
+.legal-body p { margin: 0 0 .8em; }
+.legal-body ul { margin: 0 0 .8em; padding-left: 20px; }
+.legal-body li { margin: .3em 0; }
+.legal-body b { font-weight: 700; }
+
+/* ---------- 主题皮肤色板（点击切换） ---------- */
+.theme-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 12px 10px;
+}
+.swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  border: none; background: transparent; cursor: pointer; padding: 0;
+}
+.swatch .sw-chip {
+  width: 100%; height: 46px;
+  border-radius: 12px;
+  border: 2px solid var(--hairline);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.swatch.active .sw-chip { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.swatch .sw-name { font-size: 12px; color: var(--fg-soft); }
+.swatch.active .sw-name { color: var(--accent); font-weight: 700; }
+
+------ 第 28 页 / 共 93 页 ------
+
+/* ---------- 独立页面（统计 / 设置）滚动容器 ---------- */
+.stats-body, .settings-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#view-stats .stats-body { padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); }
+#view-settings .settings-body { padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); }
+
+
+/* ===== 文件: www/js/app.js ===== */
+// 砚白 Inkstone —— 主控逻辑
+import {
+  loadSettings, saveSettings, DEFAULT_SETTINGS,
+  putBook, getBook, deleteBook, listBooksMeta,
+  loadProgress, saveProgress, getProgress,
+  loadBookmarks, saveBookmarks,
+  addReadingTime, aggregateStats, loadStats, todayKey,
+} from './store.js';
+import { paginateChapter, chapterCharCount } from './paginate.js';
+import { parseTxt, parseEpub, parsePdf, parseMobi, parseFb2, parseHtml, parseDocx } from './importers.js';
+import { openPdf, renderPdfPage } from './pdfview.js';
+import { translateText } from './translate.js';
+import {
+  aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiTags, aiBilingual, pageParagraphs, renderMarkdown,
+} from './ai.js';
+
+const FONT_STACK = {
+  serif: 'Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif',
+  sans: '-apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif',
+  mono: '"Courier New", "Noto Sans Mono", monospace',
+};
+
+// 主题皮肤（顺序即设置页色板顺序）；THEME_PREVIEW 仅用于色板预览的 bg/fg
+// 只保留 3 套，每套有专属翻书动画：墨水风(笔迹淡化) / 简约(位移淡入) / 竹简(竹片翻开)
+const THEMES = [
+  { id: 'ink', name: '墨水风' },
+  { id: 'simple', name: '简约' },
+  { id: 'bamboo', name: '竹简' },
+];
+const THEME_PREVIEW = {
+  ink: ['#f4eddc', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'], bamboo: ['#e2efe1', '#243a2e'],
+};
+
+// 法律声明文案（隐私政策 / 用户协议 / 权限说明）。iOS 与华为两平台通用，纯本地静态内容，无服务器依赖。
+// 联系邮箱、生效日期等需按实际情况替换（下方以占位给出）。
+const LEGAL_EFFECTIVE_DATE = '2026-11-04';
+const LEGAL_CONTACT_EMAIL = 'inkstone-dev@example.com'; // 待你替换为真实联系邮箱
+const LEGAL_CONTENT = {
+
+------ 第 29 页 / 共 93 页 ------
+  privacy: {
+    title: '隐私政策',
+    html: `
+      <p>生效日期：${LEGAL_EFFECTIVE_DATE}</p>
+      <p>砚白 Inkstone（以下简称"本应用"）是一款<b>本地优先</b>的电子书阅读器。我们极其重视你的隐私，并遵循"数据最小化"原则。本政策说明我们如何处理信息。</p>
+      <h2>一、我们收集的信息</h2>
+      <p>本应用默认完全在你的设备本地运行，<b>不要求注册账号</b>，不收集任何个人信息即可使用核心阅读功能。保存在你设备上的数据仅包括：导入的书籍文件、阅读进度与书签、排版与主题等设置，以及在你主动启用 AI 功能时保存的第三方 API Key（仅存本机）。这些数据均保存在你的设备本地存储/应用沙盒中，<b>不会自动上传到任何服务器</b>（本应用没有后端服务器）。</p>
+      <h2>二、AI 与联网功能</h2>
+      <p>当你主动开启"AI 引擎"或"翻译"并填入第三方提供方的 API Key 后，阅读页的"译 / AI 解释"、AI 助手（导读 / 问答 / 笔记 / 双语对照）会将你选中的文本或本书内容发送给你所配置的大模型 / 翻译服务（如 DeepL、Google、OpenAI 及兼容接口）。这些数据由对应第三方按其各自隐私政策处理，传输与存储责任由该提供方承担。你随时可在设置中关闭 AI 功能并清除 Key，关闭后相关联网行为即停止。</p>
+      <h2>三、网络权限</h2>
+      <p>本应用申请"网络"权限，仅用于上述 AI / 翻译请求以及极少量的版本检查；书籍导入、阅读、笔记均不依赖网络。</p>
+      <h2>四、我们不会出售或共享你的个人信息</h2>
+      <p>除法律法规要求或你主动开启的第三方服务外，我们不会向任何第三方披露、出售或交易你的数据。</p>
+      <h2>五、儿童隐私</h2>
+      <p>本应用不专门面向未满 14 周岁的儿童，我们不会有意收集儿童个人信息。</p>
+      <h2>六、你的权利</h2>
+      <p>你可以随时通过卸载应用，或在系统设置中清除应用数据，来删除全部本地数据。</p>
+      <h2>七、政策变更</h2>
+      <p>如本政策发生变更，我们将在应用内更新并以最新版本为准。</p>
+      <h2>八、联系我们</h2>
+      <p>如你对隐私事宜有疑问，可通过邮箱 ${LEGAL_CONTACT_EMAIL} 联系我们。</p>
+    `,
+  },
+  terms: {
+    title: '用户协议',
+    html: `
+      <p>生效日期：${LEGAL_EFFECTIVE_DATE}</p>
+      <p>欢迎使用砚白 Inkstone。使用本应用即表示你同意以下条款。</p>
+      <h2>一、软件许可</h2>
+      <p>在遵守本协议的前提下，我们授予你一项<b>非独占、可撤销</b>的有限许可，允许你在自有设备上为个人非商业目的安装与使用本应用。</p>
+      <h2>二、使用规范</h2>
+      <ul>
+        <li>不得利用本应用从事任何违反法律法规的活动；</li>
+        <li>你导入的书籍应保证拥有合法授权，因内容版权产生的责任由你自行承担；</li>
+        <li>不得对本应用进行反向工程、反编译或试图提取源代码（法律允许的情形除外）。</li>
+      </ul>
+      <h2>三、知识产权</h2>
+      <p>本应用软件的著作权归开发者所有；应用内所展示的书籍内容版权归原作者或出版方所有，本应用不因此获得任何内容授权。</p>
+      <h2>四、AI 内容免责</h2>
+      <p>AI 生成内容由第三方模型产生，仅供参考，不构成专业建议；其准确性、完整性由提供方负责，使用者应自行判断并自负其责。</p>
+      <h2>五、免责声明</h2>
+      <p>本应用"按现状"提供，不保证无中断、无错误或永久可用。因使用或无法使用本应用而产生的风险与损失，由你自行承担。</p>
+      <h2>六、协议终止</h2>
+      <p>如你违反本协议，开发者有权终止对你的许可；终止后你应停止使用并删除本应用。</p>
+      <h2>七、适用法律</h2>
+      <p>本协议的订立、效力与争议解决均适用中华人民共和国法律。</p>
+    `,
+  },
+  permissions: {
+    title: '权限说明',
+
+------ 第 30 页 / 共 93 页 ------
+    html: `
+      <p>本应用以本地阅读为核心，遵循"权限最小化"原则，尽可能少地申请系统权限。</p>
+      <h2>Android</h2>
+      <ul>
+        <li><b>网络（INTERNET）</b>：仅用于 AI / 翻译请求与版本检查，不用于收集个人数据；关闭 AI 功能后基本不触发联网。</li>
+        <li><b>文件访问</b>：书籍导入通过系统文件选择器（SAF）完成，本应用<b>不申请</b>存储读写权限，无法在未经你主动选择文件的情况下访问设备上的其他文件。</li>
+      </ul>
+      <h2>iOS（如后续版本上架）</h2>
+      <ul>
+        <li><b>网络</b>：同上，用于 AI / 翻译与版本检查。</li>
+        <li><b>文件</b>：通过系统"文件 / 文档"选择器导入，不额外申请相册、通讯录、定位等敏感权限。</li>
+      </ul>
+      <h2>我们不申请的权限</h2>
+      <p>本应用不申请相机、定位、通讯录、麦克风、电话、短信等敏感权限；所有核心阅读与笔记功能均可在不授权任何敏感权限的情况下离线使用。</p>
+    `,
+  },
+};
+
+// ---------- 状态 ----------
+let settings = loadSettings();
+// 主题已精简为 ink / simple / bamboo；旧版本残留的 theme 值统一回退到默认墨水风
+if (!THEMES.some((t) => t.id === settings.theme)) {
+  settings.theme = DEFAULT_SETTINGS.theme;
+  saveSettings(settings);
+}
+let currentBook = null;
+let ci = 0; // 当前章节
+let pi = 0; // 当前页（章内）
+let pages = []; // 当前章分页结果
+let chapterChars = [];
+let totalChars = 0;
+let turnCounter = 0;
+const pageCache = new Map(); // ci + 设置哈希 -> 分页
+let repTimer = null;
+let currentPdfDoc = null; // PDF 阅读时持有的 pdf.js doc
+let readingTimer = null; // 阅读计时器
+let readingLastTs = 0; // 上一次计时戳
+let toastTimer = null;
+let isFlipping = false; // 翻页动画进行中，用于忽略重叠点击
+const pdfImageCache = new Map(); // ci -> 已渲染的图片 dataURL
+
+const $ = (id) => document.getElementById(id);
+
+// 复杂/加密的 Kindle 格式（AZW3/KFX 多为加密或 KF8 复杂结构），浏览器内无法可靠解析，引导 Calibre
+// 注：.mobi / .azw（无加密）已由 mobidec.js 在应用内直接解析导入
+const KINDLE_RE = /\.(azw3|kfx)$/i;
+
+// ---------- 设置 -> DOM ----------
+function applySettings() {
+  const b = document.body;
+
+------ 第 64 页 / 共 93 页 ------
+    } else {
+      pushPage(state);
+      state.cur = newPage(host, metrics);
+      if (tryAppend(state.cur, block, metrics)) continue;
+      splitBlock(state, block, host, metrics);
+    }
+  }
+  pushPage(state);
+  host.remove();
+  return state.pages;
+}
+
+// 估算章节字符数（用于全局进度百分比）
+export function chapterCharCount(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return (div.textContent || '').length;
+}
+
+/* ===== 文件: www/js/importers.js ===== */
+// 内容导入：TXT（自动分段 + 章节检测）与 EPUB（fflate 解压，解析 OPF/NCX/NAV，内联图片，抽取目录）
+import { openPdf } from './pdfview.js';
+import { parseMobi } from './mobidec.js';
+export { parseMobi };
+
+function hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+function normalizePath(p) {
+  return decodeURIComponent(p).replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+}
+function escapeReg(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ---------------- TXT ----------------
+export async function parseTxt(file) {
+  const text = await file.text();
+  const name = (file.name || '未命名').replace(/\.[^.]+$/, '');
+  const rawLines = text.split(/\r?\n/).map((s) => s.trim());
+  const chapterRe = /^(第[零一二三四五六七八九十百千0-9]+[章回卷部篇节]|chapter\s+\d+|序章|序言|前言|引言|尾声|后记|附录)/i;
+
+  const chapters = [];
+  let cur = { title: name, paras: [] };
+  for (const line of rawLines) {
+    if (!line) continue;
+    if (chapterRe.test(line)) {
+      if (cur.paras.length > 0) {
+
+------ 第 65 页 / 共 93 页 ------
+        chapters.push(cur);
+        cur = { title: line, paras: [] };
+      } else {
+        cur.title = line; // 首个标题直接作为当前章标题
+      }
+    } else {
+      cur.paras.push(line);
+    }
+  }
+  if (cur.paras.length > 0) chapters.push(cur);
+
+  if (!chapters.length) {
+    chapters.push({ title: name, paras: rawLines.filter(Boolean) });
+  }
+  const built = chapters.map((c) => ({
+    title: c.title,
+    html: '<p>' + c.paras.join('</p><p>') + '</p>',
+  }));
+  return {
+    id: 'txt-' + hash(name + Date.now()),
+    title: name,
+    author: '',
+    source: 'txt',
+    chapters: built,
+  };
+}
+
+// ---------------- EPUB ----------------
+export async function parseEpub(file) {
+  const fflate = window.fflate;
+  if (!fflate) throw new Error('EPUB 解压库（fflate）未加载，请检查网络后刷新');
+  if (!file || !file.arrayBuffer) throw new Error('传入的不是有效文件对象');
+  let buf;
+  try {
+    buf = await file.arrayBuffer();
+  } catch (e) {
+    throw new Error('读取文件失败：' + (e && e.message ? e.message : e));
+  }
+  let files;
+  try {
+    files = unzipToMap(new Uint8Array(buf), fflate);
+  } catch (e) {
+    throw new Error('EPUB 解压失败（可能不是标准 EPUB/ZIP，或为加密书）：' + (e && e.message ? e.message : e));
+  }
+  if (!Object.keys(files).length) throw new Error('EPUB 为空或不是有效 ZIP 包');
+
+  // 1. container.xml -> OPF
+  const container = decode(files[normalizePath('META-INF/container.xml')]);
+  if (!container) throw new Error('EPUB 结构异常：缺少 META-INF/container.xml');
+  const opfPath = (container.match(/full-path="([^"]+)"/) || container.match(/full-path='([^']+)'/))[1];
+
+------ 第 66 页 / 共 93 页 ------
+  if (!opfPath) throw new Error('无法从 container.xml 定位 OPF 文件');
+  const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
+  const opfText = decode(files[normalizePath(opfPath)]);
+  if (!opfText) throw new Error('无法读取 OPF 文件');
+
+  // 2. manifest + spine
+  const manifest = parseManifest(opfText);
+  const spine = parseSpine(opfText);
+
+  // 3. TOC（nav / ncx）
+  const tocMap = findTocMap(opfText, files, opfDir);
+
+  // 4. 构建章节
+  const chapters = [];
+  for (const idref of spine) {
+    const item = manifest[idref];
+    if (!item) continue;
+    const mt = (item.mediaType || '').toLowerCase();
+    if (!/html|xhtml|xml/.test(mt) && !/\.x?html?$/.test(item.href)) continue;
+    const fullKey = normalizePath(joinPath(opfDir, item.href));
+    const raw = files[fullKey];
+    if (!raw) continue;
+    let html = decode(raw);
+    html = extractBody(html);
+    html = inlineImages(html, opfDir, files);
+    html = sanitize(html);
+    const title = findTitle(html, tocMap, fullKey, chapters.length);
+    chapters.push({ title, html });
+  }
+  if (!chapters.length) throw new Error('未在 EPUB 中找到可读章节（spine 指向的内容文件可能缺失或被加密）');
+
+  const title = (opfText.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i) || [])[1] || (file.name || '未命名').replace(/\.[^.]+$/, '');
+  const author = (opfText.match(/<dc:creator[^>]*>([^<]+)<\/dc:creator>/i) || [])[1] || '';
+  return {
+    id: 'epub-' + hash(title + author + Date.now()),
+    title: title.trim(),
+    author: author.trim(),
+    source: 'epub',
+    chapters,
+  };
+}
+
+function unzipToMap(uint8, fflate) {
+  const out = fflate.unzipSync(uint8);
+  const map = {};
+  for (const k in out) map[normalizePath(k)] = out[k];
+  return map;
+}
+
+function decode(uint8) {
+
+------ 第 67 页 / 共 93 页 ------
+  if (!uint8) return '';
+  let s = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
+  // 大量替换符说明编码非 UTF-8，尝试 GBK（老版中文 EPUB）
+  const bad = (s.match(/\ufffd/g) || []).length;
+  if (bad > s.length * 0.02 && bad > 5) {
+    try {
+      s = new TextDecoder('gbk', { fatal: false }).decode(uint8);
+    } catch (e) {}
+  }
+  return s;
+}
+
+function parseManifest(opf) {
+  const map = {};
+  const itemRe = /<item\b([^>]*)>/gi;
+  let m;
+  while ((m = itemRe.exec(opf))) {
+    const tag = m[1];
+    const id = (tag.match(/id="([^"]+)"/i) || [])[1];
+    const href = (tag.match(/href="([^"]+)"/i) || [])[1];
+    const mediaType = (tag.match(/media-type="([^"]+)"/i) || [])[1];
+    if (id && href) map[id] = { href, mediaType };
+  }
+  return map;
+}
+function parseSpine(opf) {
+  const m = opf.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i);
+  if (!m) return [];
+  const refs = [];
+  const re = /<itemref\b[^>]*idref="([^"]+)"/gi;
+  let r;
+  while ((r = re.exec(m[1]))) refs.push(r[1]);
+  return refs;
+}
+
+function findTocMap(opf, files, opfDir) {
+  const map = new Map();
+  const itemRe = /<item\b([^>]*)>/gi;
+  let m;
+  let navItem = null;
+  let ncxItem = null;
+  while ((m = itemRe.exec(opf))) {
+    const tag = m[1];
+    if (/properties="[^"]*nav[^"]*"/i.test(tag) && !navItem) navItem = tag;
+    if (/media-type="application\/x-dtbncx\+xml"/i.test(tag) && !ncxItem) ncxItem = tag;
+  }
+  if (navItem) {
+    const href = (navItem.match(/href="([^"]+)"/i) || [])[1];
+    const html = decode(files[normalizePath(opfDir + href)] || files[normalizePath(href)]);
+    if (html) collectNav(html, map, opfDir);
+
+------ 第 68 页 / 共 93 页 ------
+  } else if (ncxItem) {
+    const href = (ncxItem.match(/href="([^"]+)"/i) || [])[1];
+    const xml = decode(files[normalizePath(opfDir + href)] || files[normalizePath(href)]);
+    if (xml) collectNcx(xml, map, opfDir);
+  }
+  return map;
+}
+function collectNav(html, map, opfDir) {
+  const navMatch =
+    html.match(/<nav\b[^>]*epub:type="[^"]*toc[^"]*"[^>]*>([\s\S]*?)<\/nav>/i) ||
+    html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/i);
+  const body = navMatch ? navMatch[1] : html;
+  const aRe = /<a\b[^>]*href="([^"#][^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = aRe.exec(body))) {
+    // 目录链接相对于 nav 文档所在目录（通常即 OPF 目录），解析后与章节 fullKey 对齐
+    const href = normalizePath(joinPath(opfDir, m[1].split('#')[0]));
+    const label = m[2].replace(/<[^>]+>/g, '').trim() || '章节';
+    if (!map.has(href)) map.set(href, label);
+  }
+}
+function collectNcx(xml, map, opfDir) {
+  const npRe = /<navPoint\b[^>]*>([\s\S]*?)<\/navPoint>/gi;
+  let m;
+  while ((m = npRe.exec(xml))) {
+    const np = m[1];
+    const text = (np.match(/<text>([\s\S]*?)<\/text>/i) || [])[1] || '';
+    const src = (np.match(/<content\s+src="([^"]+)"/i) || [])[1] || '';
+    if (src) {
+      const href = normalizePath(joinPath(opfDir, src.split('#')[0]));
+      const label = text.replace(/<[^>]+>/g, '').trim() || '章节';
+      if (!map.has(href)) map.set(href, label);
+    }
+  }
+}
+
+function extractBody(html) {
+  const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let body = m ? m[1] : html;
+  body = body
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/<link\b[^>]*>/gi, '')
+    .replace(/<meta\b[^>]*>/gi, '');
+  return body;
+}
+function sanitize(html) {
+  return html
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+
+------ 第 69 页 / 共 93 页 ------
+    .replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+}
+function findTitle(html, tocMap, fullKey, idx) {
+  if (tocMap.has(fullKey)) return tocMap.get(fullKey);
+  const h = html.match(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/i);
+  if (h) return h[1].replace(/<[^>]+>/g, '').trim();
+  return '第 ' + (idx + 1) + ' 节';
+}
+
+function inlineImages(html, opfDir, files) {
+  const imgRe = /<img\b[^>]*src="([^"]+)"[^>]*>/gi;
+  let m;
+  let result = '';
+  let last = 0;
+  while ((m = imgRe.exec(html))) {
+    const src = m[1];
+    let replacement = m[0];
+    if (!/^(https?:|data:)/i.test(src)) {
+      const abs = normalizePath(joinPath(opfDir, src));
+      const data = files[abs];
+      if (data) {
+        const mime = mimeFromName(src);
+        const b64 = bytesToBase64(data);
+        replacement = m[0].replace(src, 'data:' + mime + ';base64,' + b64);
+      }
+    }
+    result += html.slice(last, m.index) + replacement;
+    last = m.index + m[0].length;
+  }
+  result += html.slice(last);
+  return result;
+}
+function joinPath(base, rel) {
+  if (/^(https?:|data:)/i.test(rel)) return rel;
+  const b = base.replace(/\/$/, '');
+  let parts = (b ? b.split('/') : []).concat(rel.split('/'));
+  const stack = [];
+  for (const part of parts) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') stack.pop();
+    else stack.push(part);
+  }
+  return stack.join('/');
+}
+function mimeFromName(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  return (
+    { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp' }[ext] || 'image/png'
+  );
+}
+
+------ 第 70 页 / 共 93 页 ------
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+// ---------------- PDF ----------------
+export async function parsePdf(file) {
+  const data = await file.arrayBuffer();
+  const uint8 = new Uint8Array(data);
+  const doc = await openPdf(uint8);
+  const numPages = doc.numPages;
+  const chapters = [];
+  for (let i = 0; i < numPages; i++) chapters.push({ title: `第 ${i + 1} 页`, isPdfPage: true, pageIndex: i });
+
+  // 目录：把 outline 条目的真实页码映射成章节标题（best-effort）
+  try {
+    const outline = (await doc.getOutline()) || [];
+    for (const n of outline) {
+      if (!n || !n.title) continue;
+      let pageIdx = null;
+      try {
+        if (n.dest) {
+          const d = await doc.getDestination(n.dest);
+          if (d && d[0]) pageIdx = await doc.getPageIndex(d[0]);
+        }
+      } catch (e) {}
+      if (pageIdx != null && pageIdx >= 0 && pageIdx < chapters.length) {
+        chapters[pageIdx].title = String(n.title).trim();
+      }
+    }
+  } catch (e) {}
+
+  let info = {};
+  try { info = (await doc.getMetadata()).info || {}; } catch (e) {}
+  const title = (info.Title && String(info.Title).trim()) || file.name.replace(/\.pdf$/i, '');
+  const author = info.Author ? String(info.Author).trim() : '';
+  await doc.destroy();
+
+  return {
+    id: 'pdf-' + hash(title + Date.now()),
+    title,
+    author,
+    source: 'pdf',
+    numPages,
+    pdfBytes: uint8, // 原始字节存本地，阅读时再按需渲染
+    chapters,
+
+------ 第 71 页 / 共 93 页 ------
+  };
+}
+
+// ================= 通用小工具（FB2 / HTML / DOCX 共用） =================
+function esc(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function localNameOf(node) { return node.localName || node.nodeName || ''; }
+function byLocal(root, name) {
+  const out = [];
+  const walk = (n) => {
+    if (n.nodeType === 1 && localNameOf(n) === name) out.push(n);
+    for (const c of Array.from(n.childNodes)) walk(c);
+  };
+  walk(root);
+  return out;
+}
+function getAttr(node, n) {
+  for (const cand of [n, 'w:' + n, 'xlink:' + n, 'l:' + n]) {
+    const v = node.getAttribute(cand);
+    if (v != null) return v;
+  }
+  return '';
+}
+function sanitizeHtml(html) {
+  return html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+    .replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+}
+
+// ================= FB2（FictionBook，纯 XML，DOMParser 直解） =================
+export async function parseFb2(file) {
+  const text = await file.text();
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('FB2 解析失败：不是有效的 XML 文件');
+  const fb = doc.documentElement;
+
+  let title = (file.name || '未命名').replace(/\.[^.]+$/, '');
+  let author = '';
+  const titleInfo = byLocal(fb, 'title-info')[0];
+  if (titleInfo) {
+    const bt = byLocal(titleInfo, 'book-title')[0];
+    if (bt && bt.textContent.trim()) title = bt.textContent.trim();
+    const a = byLocal(titleInfo, 'author')[0];
+    if (a) {
+      const fn = byLocal(a, 'first-name')[0];
+      const ln = byLocal(a, 'last-name')[0];
+
+------ 第 72 页 / 共 93 页 ------
+      author = [ln && ln.textContent, fn && fn.textContent].filter(Boolean).join(' ').trim();
+    }
+  }
+
+  // 内嵌二进制图片 -> data URI
+  const images = {};
+  for (const b of byLocal(doc, 'binary')) {
+    const id = b.getAttribute('id');
+    const ct = b.getAttribute('content-type') || 'image/jpeg';
+    const data = (b.textContent || '').replace(/\s+/g, '').trim();
+    if (id && data) images['#' + id] = 'data:' + ct + ';base64,' + data;
+  }
+
+  const body = byLocal(fb, 'body')[0];
+  const sections = body ? Array.from(body.children).filter((c) => localNameOf(c) === 'section') : [];
+  const chapters = [];
+  if (sections.length) {
+    for (const sec of sections) {
+      const t = Array.from(sec.children).find((c) => localNameOf(c) === 'title');
+      const title2 = t ? t.textContent.trim() : '章节';
+      const clone = sec.cloneNode(true);
+      const firstTitle = Array.from(clone.children).find((c) => localNameOf(c) === 'title');
+      if (firstTitle) firstTitle.remove();
+      chapters.push({ title: title2 || '章节', html: fb2NodeToHtml(clone, images) });
+    }
+  } else {
+    chapters.push({ title, html: fb2NodeToHtml(body || fb, images) });
+  }
+  if (!chapters.some((c) => c.html.replace(/<[^>]+>/g, '').trim())) {
+    chapters.length = 0;
+    chapters.push({ title, html: '<p></p>' });
+  }
+  return { id: 'fb2-' + hash(title + author + Date.now()), title, author, source: 'fb2', chapters };
+}
+function fb2NodeToHtml(node, images) {
+  if (node.nodeType === 3) return esc(node.nodeValue);
+  if (node.nodeType !== 1) return '';
+  const tag = localNameOf(node);
+  if (tag === 'image') {
+    const ref = getAttr(node, 'href');
+    const uri = images[ref];
+    return uri ? '<img src="' + uri + '" alt="" />' : '';
+  }
+  const kids = Array.from(node.childNodes).map((c) => fb2NodeToHtml(c, images)).join('');
+  switch (tag) {
+    case 'p': return '<p>' + kids + '</p>';
+    case 'title': return '<h2>' + kids + '</h2>';
+    case 'subtitle': return '<h3>' + kids + '</h3>';
+    case 'epigraph': return '<blockquote class="epigraph">' + kids + '</blockquote>';
+    case 'text-author': return '<p class="text-author">' + kids + '</p>';
+
+------ 第 73 页 / 共 93 页 ------
+    case 'poem': return '<div class="poem">' + kids + '</div>';
+    case 'stanza': return '<div class="stanza">' + kids + '</div>';
+    case 'v': return '<p class="verse">' + kids + '</p>';
+    case 'cite': return '<blockquote>' + kids + '</blockquote>';
+    case 'code': return '<pre>' + kids + '</pre>';
+    case 'strong': return '<strong>' + kids + '</strong>';
+    case 'emphasis': return '<em>' + kids + '</em>';
+    case 'a': case 'link': return '<a href="' + esc(getAttr(node, 'href') || '#') + '">' + kids + '</a>';
+    case 'empty-line': return '<br />';
+    case 'section': return kids;
+    case 'body': return kids;
+    default: return kids;
+  }
+}
+
+// ================= HTML / HTM（提取正文，按标题分章） =================
+export async function parseHtml(file) {
+  const text = await file.text();
+  const name = (file.name || '未命名').replace(/\.[^.]+$/, '');
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  doc.querySelectorAll('script,style,link,meta').forEach((e) => e.remove());
+  const body = doc.body || doc.documentElement;
+  const headingRe = /^h[1-3]$/i;
+  const chapters = [];
+  let cur = null;
+  const close = () => {
+    if (cur) {
+      const inner = cur.parts.join('');
+      if (inner.replace(/<[^>]+>/g, '').trim()) chapters.push({ title: cur.title, html: inner });
+      cur = null;
+    }
+  };
+  for (const el of Array.from(body.children)) {
+    const tn = (el.tagName || '').toLowerCase();
+    if (headingRe.test(tn)) {
+      close();
+      const htext = (el.textContent || '').trim();
+      cur = { title: htext || '第 ' + (chapters.length + 1) + ' 节', parts: [] };
+      cur.parts.push('<' + tn + '>' + esc(el.textContent || '') + '</' + tn + '>');
+    } else {
+      if (!cur) cur = { title: name, parts: [] };
+      cur.parts.push(sanitizeHtml(el.outerHTML));
+    }
+  }
+  close();
+  if (!chapters.length) chapters.push({ title: name, html: sanitizeHtml(body.innerHTML) });
+  const metaTitle = doc.querySelector('title');
+  const title = (metaTitle && metaTitle.textContent.trim()) || name;
+  return { id: 'html-' + hash(name + Date.now()), title, author: '', source: 'html', chapters };
+}
+
+------ 第 74 页 / 共 93 页 ------
+
+// ================= DOCX（OOXML Word，复用 fflate 解压） =================
+export async function parseDocx(file) {
+  const fflate = window.fflate;
+  if (!fflate) throw new Error('解压库（fflate）未加载，请刷新页面后重试');
+  let files;
+  try {
+    files = fflate.unzipSync(new Uint8Array(await file.arrayBuffer()));
+  } catch (e) {
+    throw new Error('DOCX 解压失败（可能不是有效的 .docx / ZIP 包）：' + (e && e.message ? e.message : e));
+  }
+  const xml = decode(files['word/document.xml'] || files['word/document2.xml']);
+  if (!xml) throw new Error('DOCX 结构异常：缺少 word/document.xml');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('DOCX 正文解析失败');
+
+  const styleMap = parseDocxStyleMap(decode(files['word/styles.xml']));
+  const body = byLocal(doc.documentElement, 'body')[0] || doc.documentElement;
+  const paras = byLocal(body, 'p');
+
+  const chapters = [];
+  let cur = null;
+  const newChap = (t) => ({ title: t || '未命名', parts: [], has: false });
+  for (const p of paras) {
+    const pPr = byLocal(p, 'pPr')[0];
+    let styleId = '';
+    let numId = null;
+    if (pPr) {
+      const ps = byLocal(pPr, 'pStyle')[0];
+      if (ps) styleId = getAttr(ps, 'val') || '';
+      const numPr = byLocal(pPr, 'numPr')[0];
+      if (numPr) { const n = byLocal(numPr, 'numId')[0]; if (n) numId = getAttr(n, 'val'); }
+    }
+    const headingLevel = styleMap.heading[styleId];
+    const html = docxRunsToHtml(p);
+    const txt = docxStripText(p);
+    if (headingLevel && txt) {
+      if (cur && cur.has) chapters.push(cur);
+      cur = newChap(txt);
+      cur.parts.push('<h' + headingLevel + '>' + esc(txt) + '</h' + headingLevel + '>');
+      cur.has = true;
+    } else if (numId != null && numId !== '0') {
+      if (!cur) cur = newChap('正文');
+      if (html.trim()) { cur.parts.push('<li>' + html + '</li>'); cur.has = true; }
+    } else {
+      if (!cur) cur = newChap('正文');
+      if (html.trim()) { cur.parts.push('<p>' + html + '</p>'); cur.has = true; }
+    }
+  }
+  if (cur && cur.has) chapters.push(cur);
+
+------ 第 75 页 / 共 93 页 ------
+  if (!chapters.length) chapters.push({ title: file.name.replace(/\.[^.]+$/, ''), html: '<p></p>' });
+
+  const core = decode(files['docProps/core.xml']);
+  const mt = (core.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i) || [])[1];
+  const ma = (core.match(/<dc:creator[^>]*>([^<]+)<\/dc:creator>/i) || [])[1];
+  const title = (mt && mt.trim()) || file.name.replace(/\.[^.]+$/, '');
+  const author = (ma && ma.trim()) || '';
+  return {
+    id: 'docx-' + hash(title + author + Date.now()),
+    title, author, source: 'docx',
+    chapters: chapters.map((c) => ({ title: c.title, html: c.parts.join('') })),
+  };
+}
+function parseDocxStyleMap(stylesXml) {
+  const map = { heading: {} };
+  if (!stylesXml) return map;
+  const re = /<w:style\b([^>]*?w:styleId="([^"]+)"[^>]*?)>([\s\S]*?)<\/w:style>/gi;
+  let m;
+  while ((m = re.exec(stylesXml))) {
+    const sid = m[2];
+    const inner = m[3];
+    const name = (inner.match(/w:name\b[^>]*?w:val="([^"]+)"/i) || inner.match(/w:val="([^"]+)"/i) || [])[1] || '';
+    const hm = name.match(/heading\s*(\d)/i);
+    if (hm) map.heading[sid] = Math.min(6, parseInt(hm[1], 10));
+    else if (/title/i.test(name)) map.heading[sid] = 1;
+  }
+  return map;
+}
+function docxRunsToHtml(p) {
+  const runs = byLocal(p, 'r');
+  if (!runs.length) return esc(p.textContent || '');
+  return runs.map(docxRunToHtml).join('');
+}
+function docxRunToHtml(r) {
+  const rPr = byLocal(r, 'rPr')[0];
+  let b = false, i = false;
+  if (rPr) { b = byLocal(rPr, 'b').length > 0; i = byLocal(rPr, 'i').length > 0; }
+  let out = '';
+  for (const n of Array.from(r.childNodes)) {
+    const ln = localNameOf(n);
+    if (n.nodeType === 3) out += esc(n.nodeValue || '');
+    else if (ln === 't') out += esc(n.textContent || '');
+    else if (ln === 'br') out += '<br/>';
+    else if (ln === 'tab') out += '&nbsp;&nbsp;';
+    else if (ln === 'noBreakHyphen') out += '-';
+  }
+  if (b) out = '<b>' + out + '</b>';
+  if (i) out = '<i>' + out + '</i>';
+  return out;
+}
+
+------ 第 76 页 / 共 93 页 ------
+function docxStripText(el) {
+  return byLocal(el, 't').map((t) => t.textContent).join('').trim();
+}
+
+/* ===== 文件: www/js/ai.js ===== */
+// AI 引擎：让本地阅读器具备「摘要/导读、选中即问、书中问答、阅读笔记、智能标签、段落双语」
+// 设计原则（与全应用一致）：
+//   1. 本地优先 + 隐私：仅使用读者自己在「AI 引擎」里配置的 Key/模型；Key 只在本机，本应用无服务器。
+//   2. 默认零联网：所有能力只有在 provider='llm' 且填入 Key 后才会联网。
+//   3. 结果缓存：书籍级结果（摘要/标签/笔记）由调用方持久化到 book.ai（IndexedDB），避免重复消耗。
+// 底层统一走 js/llm.js 的 OpenAI 兼容客户端。
+
+import { loadSettings } from './store.js';
+import { llmChat, llmChatJson } from './llm.js';
+import { translateText } from './translate.js';
+
+// ---------- 配置 ----------
+export function aiConfigured() {
+  const s = loadSettings();
+  return s.translateProvider === 'llm' && !!s.translateApiKey;
+}
+export function aiModel() {
+  return (loadSettings().translateLlmModel || 'gpt-4o-mini');
+}
+function cfg() {
+  const s = loadSettings();
+  return {
+    base: s.translateLlmBase || 'https://api.openai.com/v1',
+    apiKey: s.translateApiKey || '',
+    model: s.translateLlmModel || 'gpt-4o-mini',
+  };
+}
+function assertCfg() {
+  if (!aiConfigured()) {
+    throw new Error('请先在「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key，本应用才会联网调用 AI。');
+  }
+  return cfg();
+}
+
+// ---------- 文本抽取 ----------
+function htmlToText(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return (d.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+// 把整本书压成一段「摘要用」文本：保留全部章节标题，正文每章截取上限，整体受 budget 约束。
+function buildDigest(book, budget = 8000) {
+  const out = [];
+  let total = 0;
+
+------ 第 77 页 / 共 93 页 ------
+  for (const ch of book.chapters) {
+    const remaining = budget - total;
+    if (remaining <= 40) break;
+    const titleLine = ch.title ? '【' + ch.title + '】' : '';
+    const body = htmlToText(ch.html);
+    const cap = Math.max(0, Math.min(600, remaining - titleLine.length - 2));
+    const slice = body.slice(0, cap);
+    const piece = titleLine + (titleLine ? '\n' : '') + slice;
+    out.push(piece);
+    total += piece.length;
+  }
+  return {
+    title: book.title || '未知书名',
+    author: book.author || '',
+    chapterCount: book.chapters.length,
+    titles: book.chapters.map((c) => c.title || '').filter(Boolean),
+    text: out.join('\n\n'),
+  };
+}
+
+// ---------- 轻量 RAG（书中问答用） ----------
+function tokenizeQuery(q) {
+  const tokens = [];
+  const cjk = q.match(/[一-鿿]+/g) || [];
+  for (const run of cjk) {
+    if (run.length === 1) { if (!STOP1.has(run)) tokens.push(run); }
+    else for (let i = 0; i < run.length - 1; i++) tokens.push(run.slice(i, i + 2));
+  }
+  const latin = q.toLowerCase().match(/[a-z0-9]+/g) || [];
+  for (const w of latin) if (w.length > 1) tokens.push(w);
+  return tokens;
+}
+const STOP1 = new Set(['的','了','是','在','我','你','他','她','它','们','这','那','有','和','与','及','也','都','就','而','把','被','让','给','个','之','其','为','以','于','上','下','不','没','又','还','很','到','会','能','要','可','但','却','若','如','因','果','们']);
+
+function retrieveRelevant(book, query, k = 5, budget = 3500) {
+  const toks = tokenizeQuery(query);
+  if (!toks.length) return { context: '', chapters: [] };
+  const chunks = [];
+  book.chapters.forEach((ch) => {
+    const body = htmlToText(ch.html);
+    const paras = body.split(/(?<=[。！？.!?])/).map((s) => s.trim()).filter((s) => s.length > 4);
+    paras.forEach((p) => chunks.push({ ch: ch.title || '', text: p }));
+  });
+  const scored = chunks
+    .map((c) => {
+      let s = 0;
+      for (const t of toks) {
+        if (t.length < 2) continue;
+        let n = 0;
+        if (/[a-z0-9]/.test(t)) {
+
+------ 第 78 页 / 共 93 页 ------
+          const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+          const m = c.text.toLowerCase().match(re);
+          n = m ? m.length : 0;
+        } else {
+          let idx = 0;
+          while ((idx = c.text.indexOf(t, idx)) !== -1) { n++; idx += t.length; }
+        }
+        s += n;
+      }
+      return { c, s };
+    })
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, k);
+
+  let ctx = '';
+  for (const { c } of scored) {
+    if (ctx.length >= budget) break;
+    const marker = c.ch ? '（' + c.ch + '）' : '';
+    const piece = marker + c.text;
+    if (ctx.length + piece.length > budget) ctx += piece.slice(0, Math.max(0, budget - ctx.length));
+    else ctx += piece + '\n';
+  }
+  return { context: ctx.trim(), chapters: scored.map((x) => x.c.ch).filter(Boolean) };
+}
+
+// ---------- ① 摘要 / 导读 ----------
+// scope: { type:'book' } 或 { type:'chapter', index } 或 { type:'chapter', title, text }
+export async function aiSummary(book, scope) {
+  const c = assertCfg();
+  let digestTitle = book.title;
+  let digestAuthor = book.author || '';
+  let digestText;
+  let scopeLabel;
+
+  if (scope && scope.type === 'chapter') {
+    if (scope.text != null) {
+      digestTitle = book.title + ' · ' + (scope.title || '章节');
+      digestText = (scope.title ? '【' + scope.title + '】\n' : '') + htmlToText(scope.text);
+    } else {
+      const ch = book.chapters[scope.index];
+      if (!ch) throw new Error('章节索引越界');
+      digestTitle = book.title + ' · ' + (ch.title || '章节');
+      digestText = '【' + (ch.title || '') + '】\n' + htmlToText(ch.html);
+    }
+    scopeLabel = '本章导读';
+  } else {
+    const d = buildDigest(book);
+    digestTitle = d.title;
+    digestAuthor = d.author;
+
+------ 第 79 页 / 共 93 页 ------
+    digestText = d.text;
+    scopeLabel = '全书导读';
+  }
+
+  const sys =
+    '你是一位专业的图书导读编辑。请基于用户提供的书目信息，用简体中文输出两部分内容：\n' +
+    '## 内容概要\n概括本书/本章的主题、核心内容与结构脉络。\n' +
+    '## 阅读导读\n给出阅读背景、应重点关注的线索或概念、以及阅读节奏建议。\n' +
+    '要点用 - 列表，关键概念用 **加粗**。不要编造材料中不存在的信息；材料不足时基于已有内容合理推断并注明“推断”。';
+  const user =
+    '书名：' + digestTitle + (digestAuthor ? '\n作者：' + digestAuthor : '') +
+    '\n类型：' + scopeLabel + '\n\n书目信息（含目录与正文摘录）：\n' + digestText;
+
+  const raw = await llmChat({
+    baseUrl: c.base, apiKey: c.apiKey, model: c.model,
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: user },
+    ],
+    temperature: 0.3,
+  });
+  // 拆分为 summary / guide
+  let summary = raw, guide = '';
+  const m = raw.split(/##\s*阅读导读/i);
+  if (m.length >= 2) {
+    summary = (m[0].replace(/##\s*内容概要/i, '').trim());
+    guide = ('## 阅读导读\n' + m[1].trim());
+  }
+  return { summary: summary.trim(), guide: guide.trim() || raw.trim(), raw };
+}
+
+// ---------- ② 选中即问 / 概念解释 ----------
+const explainCache = new Map();
+export async function aiExplain(text, book, contextText) {
+  const cacheKey = text;
+  if (explainCache.has(cacheKey)) return explainCache.get(cacheKey);
+  const c = assertCfg();
+  const ctx = contextText || buildDigest(book, 2500).text;
+  const sys =
+    '你是一位博学的伴读助手。用户正在阅读一本书，选中了一段文字（可能是术语、典故、难句或概念）。' +
+    '请结合整本书的上下文，用简体中文简明扼要地解释这段话的含义、背景或所指，帮助读者理解。' +
+    '控制在 220 字以内；除非所选内容已包含，否则避免剧透后续情节。若无法判断，如实说明。';
+  const user = '本书上下文摘录：\n' + ctx + '\n\n用户选中的内容：\n' + text;
+  const raw = await llmChat({
+    baseUrl: c.base, apiKey: c.apiKey, model: c.model,
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: user },
+    ],
+    temperature: 0.3,
+
+------ 第 80 页 / 共 93 页 ------
+  });
+  const out = raw.trim();
+  explainCache.set(cacheKey, out);
+  return out;
+}
+
+// ---------- ③ 书中问答（轻量 RAG） ----------
+export async function aiAsk(question, book) {
+  const c = assertCfg();
+  const { context, chapters } = retrieveRelevant(book, question, 6, 4000);
+  const sys =
+    '你是一位严谨的伴读助手。请只根据用户提供的「本书节选」内容回答问题，不要引入节选之外的虚构情节或结局。' +
+    '若节选不足以回答，请明确说明「书中节选未提供足够信息」。用简体中文，必要时用 **加粗** 标出关键人物/概念。';
+  const user = '本书节选（来自：' + (chapters.join('、') || '全书') + '）：\n' +
+    (context || '（无可用节选）') + '\n\n读者的问题：\n' + question;
+  const raw = await llmChat({
+    baseUrl: c.base, apiKey: c.apiKey, model: c.model,
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: user },
+    ],
+    temperature: 0.3,
+  });
+  return raw.trim();
+}
+
+// ---------- ④ 阅读笔记 / 脉络（结构化） ----------
+export async function aiNotes(book) {
+  const c = assertCfg();
+  const d = buildDigest(book);
+  const sys =
+    '你是文学/知识梳理助手。基于提供的书目信息，抽取结构化阅读笔记，仅输出 JSON（不要任何解释或 Markdown 代码块包裹），' +
+    '格式严格为：\n' +
+    '{ "characters":[{"name":"","role":"","relation":""}], "timeline":[{"point":"","desc":""}], "points":["关键论点或要点"] }\n' +
+    '要求：characters 抽取 3-8 个核心人物/实体并说明其角色与彼此关系；timeline 抽取 3-6 个关键节点；' +
+    'points 抽取 3-8 条核心论点、主题或方法论。全部基于文本，不要虚构。';
+  const user = '书名：' + d.title + (d.author ? '\n作者：' + d.author : '') +
+    '\n目录：' + d.titles.join(' / ') + '\n\n正文摘录：\n' + d.text;
+  const data = await llmChatJson({
+    baseUrl: c.base, apiKey: c.apiKey, model: c.model,
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: user },
+    ],
+  });
+  return {
+    characters: Array.isArray(data.characters) ? data.characters : [],
+    timeline: Array.isArray(data.timeline) ? data.timeline : [],
+    points: Array.isArray(data.points) ? data.points : [],
+  };
+
+------ 第 81 页 / 共 93 页 ------
+}
+
+// ---------- ⑤ 智能标签 ----------
+export async function aiTags(book) {
+  const c = assertCfg();
+  const d = buildDigest(book, 4000);
+  const sys =
+    '你是图书分类助手。基于提供的书目信息，给出 3-6 个适合作为书架标签的短词（每个 2-4 字，' +
+    '涵盖主题/题材/难度/情绪等维度，例如：科幻、悬疑、哲学、入门、硬核、治愈、长篇）。' +
+    '仅输出 JSON：{ "tags":["...","..."] }，不要解释或代码块包裹。';
+  const user = '书名：' + d.title + (d.author ? '\n作者：' + d.author : '') +
+    '\n目录：' + d.titles.join(' / ') + '\n\n正文摘录：\n' + d.text;
+  const data = await llmChatJson({
+    baseUrl: c.base, apiKey: c.apiKey, model: c.model,
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: user },
+    ],
+  });
+  const tags = Array.isArray(data.tags) ? data.tags.map((t) => String(t).slice(0, 8)).slice(0, 8) : [];
+  return tags;
+}
+
+// ---------- ⑥ 段落级双语（升级现有翻译） ----------
+// 接收一组段落原文，逐段翻译，返回 [{orig, trans}]；复用 translate.js 的 provider/Key 配置。
+export async function aiBilingual(paragraphs, dir) {
+  const out = [];
+  for (const p of paragraphs) {
+    if (!p.trim()) { out.push({ orig: p, trans: '' }); continue; }
+    try {
+      const r = await translateText(p, {
+        provider: loadSettings().translateProvider,
+        apiKey: loadSettings().translateApiKey,
+        llmBaseUrl: loadSettings().translateLlmBase,
+        llmModel: loadSettings().translateLlmModel,
+        dir: dir || 'auto',
+      });
+      out.push({ orig: p, trans: r.text });
+    } catch (e) {
+      out.push({ orig: p, trans: '⚠ ' + e.message });
+    }
+  }
+  return out;
+}
+
+// 把当前页 HTML 拆成段落文本（供双语对照使用）。无 <p> 时按句切分兜底。
+export function pageParagraphs(pageHtml) {
+  const d = document.createElement('div');
+  d.innerHTML = pageHtml || '';
+  const ps = Array.from(d.querySelectorAll('p')).map((p) => (p.textContent || '').trim()).filter(Boolean);
+
+------ 第 82 页 / 共 93 页 ------
+  if (ps.length) return ps;
+  const txt = (d.textContent || '').replace(/\s+/g, ' ').trim();
+  return txt ? txt.split(/(?<=[。！？.!?])\s*/).map((s) => s.trim()).filter(Boolean) : [];
+}
+
+// ---------- Markdown 渲染（极简、安全：先转义再处理） ----------
+export function renderMarkdown(md) {
+  const esc = String(md || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lines = esc.split(/\n/);
+  let html = '';
+  let inList = false;
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+  for (const line of lines) {
+    const t = line.replace(/\s+$/, '');
+    if (/^###\s+/.test(t)) { closeList(); html += '<h4>' + inline(t.replace(/^###\s+/, '')) + '</h4>'; }
+    else if (/^##\s+/.test(t)) { closeList(); html += '<h3>' + inline(t.replace(/^##\s+/, '')) + '</h3>'; }
+    else if (/^#\s+/.test(t)) { closeList(); html += '<h2>' + inline(t.replace(/^#\s+/, '')) + '</h2>'; }
+    else if (/^[-*]\s+/.test(t)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + inline(t.replace(/^[-*]\s+/, '')) + '</li>';
+    } else if (t === '') { closeList(); }
+    else { closeList(); html += '<p>' + inline(t) + '</p>'; }
+  }
+  closeList();
+  return html;
+}
+function inline(s) {
+  return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
+}
+
+/* ===== 文件: www/js/llm.js ===== */
+// 统一的 OpenAI 兼容 Chat Completions 客户端
+// 摘要 / 问答 / 解释 / 笔记 / 标签 / 翻译 全部共用这一个联网出口。
+// 关键：默认零联网；只有在「AI 引擎」里显式选择 AI 大模型并填入 Key 后才会发起请求。
+
+/**
+ * 单次对话补全。
+ * @param {Object} opts
+ * @param {string} opts.baseUrl  OpenAI 兼容 base（如 https://api.openai.com/v1）
+ * @param {string} opts.apiKey
+ * @param {string} opts.model
+ * @param {Array}  opts.messages [{role, content}]
+ * @param {number} [opts.temperature=0.3]
+ * @param {number} [opts.maxTokens]
+ * @returns {Promise<string>} 模型输出的纯文本
+ */
+export async function llmChat(opts) {
+  const {
+    baseUrl = 'https://api.openai.com/v1',
+
+------ 第 83 页 / 共 93 页 ------
+    apiKey = '',
+    model = 'gpt-4o-mini',
+    messages,
+    temperature = 0.3,
+    maxTokens,
+  } = opts || {};
+  const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  if (!apiKey) throw new Error('缺少 API Key：请先在「阅读设置 → AI 引擎」填写');
+  if (!Array.isArray(messages) || !messages.length) throw new Error('空的对话内容');
+
+  const body = { model, messages, temperature };
+  if (maxTokens) body.max_tokens = maxTokens;
+
+  const res = await fetch(base + '/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let msg = 'AI 接口返回 ' + res.status;
+    try {
+      const err = await res.json();
+      if (err && err.error && err.error.message) msg = err.error.message;
+    } catch (e) { /* 忽略解析失败，使用状态码提示 */ }
+    throw new Error(msg);
+  }
+
+  const data = await res.json();
+  const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if (!content) throw new Error('AI 接口返回格式异常（未含 content）');
+  return content;
+}
+
+/**
+ * 要求模型输出 JSON，并做容错解析（去掉 ```json 代码块、截取首个 { 或 [ 匹配闭合）。
+ * @returns {Promise<any>}
+ */
+export async function llmChatJson(opts) {
+  const raw = await llmChat(Object.assign({ temperature: 0.2 }, opts));
+  return parseJson(raw);
+}
+
+function parseJson(s) {
+  if (typeof s !== 'string') return s;
+  let t = s.trim();
+  // 去掉 ```json ... ``` 或 ``` ... ``` 包裹
+
+------ 第 84 页 / 共 93 页 ------
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  // 截取首个 { 或 [ 到匹配闭合处
+  const iBrace = t.indexOf('{');
+  const iBrack = t.indexOf('[');
+  let start = -1;
+  let open = null;
+  if (iBrace === -1 && iBrack === -1) {
+    throw new Error('AI 未返回可解析的 JSON');
+  } else if (iBrace === -1) {
+    start = iBrack; open = '[';
+  } else if (iBrack === -1) {
+    start = iBrace; open = '{';
+  } else {
+    start = Math.min(iBrace, iBrack);
+    open = t[start] === '{' ? '{' : '[';
+  }
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < t.length; i++) {
+    if (t[i] === open) depth++;
+    else if (t[i] === close) { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) throw new Error('AI 返回的 JSON 括号不匹配');
+  return JSON.parse(t.slice(start, end + 1));
+}
+
+/* ===== 文件: www/js/translate.js ===== */
+// 中英互译（可插拔后端，API Key 仅存本机 localStorage，离线阅读不受影响）
+// 提供：mock（离线演示）/ DeepL / Google Translate / 兼容 OpenAI 的 AI 大模型
+// 设计原则：默认不联网；只有用户显式选择某提供方并填入 Key 后才会发起网络请求。
+// 注：AI 大模型（llm）这条路走 js/llm.js 的统一客户端，与摘要/问答/笔记共用同一套 Key/模型配置。
+
+import { llmChat } from './llm.js';
+
+export const TRANSLATE_PROVIDERS = [
+  { val: 'none', label: '关闭' },
+  { val: 'mock', label: '演示' },
+  { val: 'deepl', label: 'DeepL' },
+  { val: 'google', label: 'Google' },
+  { val: 'llm', label: 'AI 大模型' },
+];
+
+function hasCJK(s) {
+  return /[一-鿿㐀-䶿]/.test(s); // 基本汉字 + 扩展A
+}
+export function detectLang(text) {
+  return hasCJK(text) ? 'zh' : 'en';
+}
+
+------ 第 85 页 / 共 93 页 ------
+
+function langPair(dir, text) {
+  let from, to;
+  if (dir === 'zh2en') { from = 'zh'; to = 'en'; }
+  else if (dir === 'en2zh') { from = 'en'; to = 'zh'; }
+  else { from = detectLang(text); to = from === 'zh' ? 'en' : 'zh'; }
+  return { from, to };
+}
+
+export async function translateText(text, opts = {}) {
+  const provider = opts.provider || 'none';
+  const dir = opts.dir || 'auto';
+  const { from, to } = langPair(dir, text);
+  if (provider === 'none') throw new Error('翻译未启用：请在「阅读设置 → 翻译」中选择提供方');
+
+  // 离线演示：仅验证交互链路，不调用真实翻译
+  if (provider === 'mock') {
+    const tag = from === 'zh' ? '[演示 EN] ' : '[演示 中文] ';
+    return { text: tag + text, from, to, provider: 'mock' };
+  }
+
+  const key = (opts.apiKey || '').trim();
+  if (!key) {
+    throw new Error('请先在「阅读设置 → 翻译」中填写对应提供方的 API Key');
+  }
+
+  try {
+    if (provider === 'deepl') return await deeplTranslate(text, from, to, key);
+    if (provider === 'google') return await googleTranslate(text, from, to, key);
+    if (provider === 'llm') return await llmTranslate(text, from, to, key, opts.llmBaseUrl, opts.llmModel);
+  } catch (e) {
+    if (e && e.message) throw e;
+    throw new Error('翻译请求失败：' + (e && e.message ? e.message : e));
+  }
+  throw new Error('未知翻译提供方：' + provider);
+}
+
+async function deeplTranslate(text, from, to, key) {
+  const url = 'https://api-free.deepl.com/v2/translate';
+  const body = new URLSearchParams();
+  body.set('text', text);
+  body.set('target_lang', to === 'zh' ? 'ZH' : 'EN');
+  body.set('source_lang', from === 'zh' ? 'ZH' : 'EN');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'DeepL-Auth-Key ' + key,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+
+------ 第 86 页 / 共 93 页 ------
+  });
+  if (!res.ok) throw new Error('DeepL 返回 ' + res.status);
+  const data = await res.json();
+  const t = data && data.translations && data.translations[0] && data.translations[0].text;
+  if (!t) throw new Error('DeepL 返回格式异常');
+  return { text: t, from, to, provider: 'deepl' };
+}
+
+async function googleTranslate(text, from, to, key) {
+  const url = 'https://translation.googleapis.com/language/translate/v2?key=' + encodeURIComponent(key);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ q: text, source: from, target: to, format: 'text' }),
+  });
+  if (!res.ok) throw new Error('Google 返回 ' + res.status);
+  const data = await res.json();
+  const t = data && data.data && data.data.translations && data.data.translations[0] && data.data.translations[0].translatedText;
+  if (!t) throw new Error('Google 返回格式异常');
+  return { text: t, from, to, provider: 'google' };
+}
+
+async function llmTranslate(text, from, to, key, baseUrl, model) {
+  const fromName = from === 'zh' ? 'Chinese' : 'English';
+  const toName = to === 'zh' ? 'Chinese' : 'English';
+  const sys =
+    'You are a translation engine. Translate the user text from ' + fromName + ' to ' + toName +
+    '. Output ONLY the translated text, with no explanations, no quotes, no markdown.';
+  const content = await llmChat({
+    baseUrl: baseUrl || 'https://api.openai.com/v1',
+    apiKey: key,
+    model: model || 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: sys },
+      { role: 'user', content: text },
+    ],
+    temperature: 0.2,
+  });
+  return { text: content.trim(), from, to, provider: 'llm' };
+}
+
+/* ===== 文件: www/js/mobidec.js ===== */
+// MOBI / Mobipocket 解析（纯前端实现）
+// 支持：compression=1(PalmDOC) / compression=2(Mobipocket 内置字节流压缩, 含 UTF-8 多字节)
+// 不支持：DRM(encryption!=0)、KF8/AZW3 复杂结构（降级到 Calibre 引导）
+// 算法参考 Mobipocket 内置压缩 + calibre mobi 解析思路，已对多字节 UTF-8 做逐字节处理。
+
+function be32(buf, o) {
+  return (buf[o] * 0x1000000 + buf[o + 1] * 0x10000 + buf[o + 2] * 0x100 + buf[o + 3]) >>> 0;
+}
+
+------ 第 87 页 / 共 93 页 ------
+function be16(buf, o) {
+  return buf[o] * 0x100 + buf[o + 1];
+}
+
+// ---- PalmDB 头解析 ----
+export function parsePalmDB(buf) {
+  const type = String.fromCharCode(buf[60], buf[61], buf[62], buf[63]);
+  const creator = String.fromCharCode(buf[64], buf[65], buf[66], buf[67]);
+  const numRec = be16(buf, 76);
+  const recOff = [];
+  for (let i = 0; i < numRec; i++) recOff.push(be32(buf, 78 + i * 8));
+  return { type, creator, numRec, recOff };
+}
+
+// ---- Mobipocket 内置字节流解压缩（多字节安全） ----
+// 直接对字节流操作：1-8=字面复制 c 字节；9-0x7F=字面字符(9=空格)；0x80-0xBF=后向引用；0xC0-0xFF=空格+字符
+function mobipocketDecode(data) {
+  const out = [];
+  let i = 0;
+  const n = data.length;
+  while (i < n) {
+    const c = data[i++];
+    if (c === 0) break; // 0x00 结束
+    if (c <= 8) {
+      // 1-8：复制 c 个字面字节
+      for (let k = 0; k < c && i < n; k++) out.push(data[i++]);
+    } else if (c < 0x80) {
+      out.push(c === 0x09 ? 0x20 : c);
+    } else if (c < 0xc0) {
+      // 0x80-0xBF：2 字节后向引用
+      if (i >= n) break;
+      const c2 = data[i++];
+      const concat = (c << 8) | c2;
+      const distance = (concat >> 3) & 0x7ff;
+      let length = (concat & 7) + 3;
+      let s = out.length - distance;
+      if (s < 0) { length += s; s = 0; } // 越界则裁剪
+      for (let k = 0; k < length; k++) out.push(s + k < out.length ? out[s + k] : 0x20);
+    } else {
+      // 0xC0-0xFF：空格 + 字符(b ^ 0x80)
+      out.push(0x20);
+      out.push(c ^ 0x80);
+    }
+  }
+  return out;
+}
+
+// 把解码后的字节数组（可能含跨记录残余）按 UTF-8 安全转为字符串，去掉无效字节
+function bytesToUtf8Safe(bytes) {
+  // 去掉末尾不完整的多字节序列
+
+------ 第 88 页 / 共 93 页 ------
+  let end = bytes.length;
+  while (end > 0 && bytes[end - 1] >= 0x80 && bytes[end - 1] < 0xc0) end--;
+  let s = '';
+  let i = 0;
+  while (i < end) {
+    const b = bytes[i];
+    if (b < 0x80) { s += String.fromCharCode(b); i++; }
+    else if (b >= 0xc0) {
+      // 尝试按 UTF-8 解码一个码点
+      let extra = 0;
+      if (b >= 0xf0) extra = 3; else if (b >= 0xe0) extra = 2; else extra = 1;
+      if (i + extra < end) {
+        try {
+          const slice = bytes.slice(i, i + extra + 1);
+          s += new TextDecoder('utf-8').decode(Uint8Array.from(slice));
+          i += extra + 1;
+        } catch (e) { s += '?'; i++; }
+      } else { s += '?'; i++; }
+    } else { s += '?'; i++; }
+  }
+  return s;
+}
+
+// ---- EXTH 解析（取标题/作者等元数据） ----
+function parseExth(buf, exthOff) {
+  const out = {};
+  if (buf[exthOff] !== 0x45 || buf[exthOff + 1] !== 0x58 || buf[exthOff + 2] !== 0x54 || buf[exthOff + 3] !== 0x48) return out;
+  const exthLen = be32(buf, exthOff + 4);
+  let p = exthOff + 8;
+  const end = exthOff + exthLen;
+  while (p + 8 <= end) {
+    const type = be32(buf, p);
+    const len = be32(buf, p + 4);
+    if (len < 8) break;
+    const data = buf.slice(p + 8, p + len);
+    out[type] = data;
+    p += len;
+  }
+  return out;
+}
+
+// ---- 主入口：解析 MOBI 文件（ArrayBuffer）为章节对象 ----
+export async function parseMobi(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const db = parsePalmDB(buf);
+  if (db.type !== 'BOOK' && db.creator !== 'MOBI') {
+    // 宽松校验：仍尝试继续
+  }
+  const r0 = db.recOff[0];
+  const compression = be16(buf, r0 + 0);
+
+------ 第 89 页 / 共 93 页 ------
+  const encryption = be16(buf, r0 + 12);
+  const textRecordCount = be16(buf, r0 + 8);
+  if (encryption !== 0) {
+    throw new Error('MOBI 文件已加密(DRM)，无法在应用内解密，请先用 Calibre 去除 DRM 后导入');
+  }
+  if (compression !== 1 && compression !== 2) {
+    throw new Error('不支持的 MOBI 压缩方式(compression=' + compression + ')，请改用 Calibre 转为 EPUB');
+  }
+
+  // 定位 MOBI 头
+  let mobiOff = -1;
+  for (let i = r0; i < r0 + 64 && i + 4 <= buf.length; i++) {
+    if (buf[i] === 0x4d && buf[i + 1] === 0x4f && buf[i + 2] === 0x42 && buf[i + 3] === 0x49) { mobiOff = i; break; }
+  }
+  if (mobiOff < 0) throw new Error('无法定位 MOBI 头');
+  const mobiHeaderLen = be32(buf, mobiOff + 4);
+  const encoding = be32(buf, mobiOff + 12);
+  const fullNameOffset = be32(buf, mobiOff + 68);
+  const fullNameLength = be32(buf, mobiOff + 72);
+
+  // 标题：优先 EXTH 503/504，否则用 MOBI fullName
+  let title = '';
+  let author = '';
+  const exthOff = r0 + mobiHeaderLen;
+  if (buf[exthOff] === 0x45 && buf[exthOff + 1] === 0x58 && buf[exthOff + 2] === 0x54 && buf[exthOff + 3] === 0x48) {
+    const exth = parseExth(buf, exthOff);
+    if (exth[503] || exth[504]) title = new TextDecoder('utf-8').decode(exth[503] || exth[504]).replace(/\0/g, '').trim();
+    if (exth[100]) author = new TextDecoder('utf-8').decode(exth[100]).replace(/\0/g, '').trim();
+  }
+  if (!title && fullNameLength > 0) {
+    title = new TextDecoder('utf-8').decode(buf.slice(r0 + fullNameOffset, r0 + fullNameOffset + fullNameLength)).replace(/\0/g, '').trim();
+  }
+  if (!title) title = (file.name || '未命名').replace(/\.[^.]+$/, '');
+
+  // 找文本记录范围：记录 1 .. 首个非文本记录(INDX/FLIS/FCIS/图像/HUFF) 之前
+  const isImage = (i) => buf[db.recOff[i]] === 0xff && buf[db.recOff[i] + 1] === 0xd8;
+  let textEnd = db.numRec;
+  for (let i = 1; i < db.numRec; i++) {
+    const o = db.recOff[i];
+    const m = String.fromCharCode(buf[o], buf[o + 1], buf[o + 2], buf[o + 3]);
+    if (['INDX', 'FLIS', 'FCIS', 'HUFF', 'CDIC', 'BOUN', 'SRCS', 'CRES'].includes(m) || isImage(i)) { textEnd = i; break; }
+  }
+  const lastText = textRecordCount > 0 ? Math.min(textRecordCount, textEnd - 1) : textEnd - 1;
+
+  // 解码所有文本记录
+  const decoded = [];
+  for (let i = 1; i <= lastText; i++) {
+    const o = db.recOff[i];
+    const next = i + 1 < db.recOff.length ? db.recOff[i + 1] : buf.length;
+    const rec = buf.subarray(o, next);
+
+------ 第 90 页 / 共 93 页 ------
+    const bytes = mobipocketDecode(rec);
+    decoded.push(bytes);
+  }
+  // 拼接为 HTML 字节流后统一 UTF-8 解码
+  const totalLen = decoded.reduce((a, b) => a + b.length, 0);
+  const merged = new Uint8Array(totalLen);
+  let off = 0;
+  for (const d of decoded) { merged.set(d, off); off += d.length; }
+  let html = bytesToUtf8Safe(merged);
+
+  // ---- HTML 清洗 ----
+  html = cleanMobiHtml(html);
+
+  // ---- 章节切分 ----
+  const chapters = splitChapters(html);
+
+  if (!chapters.length) {
+    chapters.push({ title: title, html: '<p>（无正文内容）</p>' });
+  }
+
+  return {
+    id: 'mobi-' + hashStr(title + author + Date.now()),
+    title,
+    author,
+    source: 'mobi',
+    chapters,
+  };
+}
+
+function hashStr(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+// 清洗 MOBI 专有标签
+function cleanMobiHtml(html) {
+  let h = html;
+  // 去掉 guide / reference
+  h = h.replace(/<guide\b[^>]*>[\s\S]*?<\/guide>/gi, '');
+  h = h.replace(/<reference\b[^>]*>/gi, '');
+  h = h.replace(/<\/reference>/gi, '');
+  // 去掉 filepos 属性（死锚点）
+  h = h.replace(/\s+filepos="[^"]*"/gi, '');
+  h = h.replace(/\s+recindex="[^"]*"/gi, '');
+  // 去掉图片标签（无图像数据）
+  h = h.replace(/<img\b[^>]*>/gi, '');
+  // 去掉 mbp:pagebreak 之外的 mbp: 标签，但保留分页作为切分标记
+  h = h.replace(/<mbp:pagebreak\s*\/?>/gi, '\n<!--PAGEBREAK-->\n');
+  h = h.replace(/<\/?mbp:[^>]*>/gi, '');
+
+------ 第 91 页 / 共 93 页 ------
+  // 去掉无用的 head/meta
+  h = h.replace(/<\/?head[^>]*>/gi, '');
+  h = h.replace(/<meta\b[^>]*>/gi, '');
+  // 清理 html/body 外壳（保留内部）
+  h = h.replace(/<\/?html[^>]*>/gi, '');
+  h = h.replace(/<\/?body[^>]*>/gi, '');
+  // 普通化危险属性
+  h = h.replace(/\son\w+="[^"]*"/gi, '');
+  h = h.replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+  return h;
+}
+
+// 基于分页标记切分章节，并按目标大小合并，避免章节过碎
+function splitChapters(html) {
+  const TARGET = 22000; // 每章目标字符数
+  const parts = html.split(/<!--PAGEBREAK-->/i);
+  const chapters = [];
+  let cur = { title: '', html: '' };
+  let curLen = 0;
+  let idx = 0;
+  const flush = () => {
+    const text = stripTags(cur.html).replace(/\s+/g, '');
+    if (text.length > 30) {
+      const title = deriveTitle(cur.html) || ('第 ' + (chapters.length + 1) + ' 部分');
+      chapters.push({ title, html: '<div>' + cur.html + '</div>' });
+    }
+    cur = { title: '', html: '' };
+    curLen = 0;
+  };
+  for (let p of parts) {
+    const tlen = p.replace(/<[^>]+>/g, '').replace(/\s+/g, '').length;
+    if (curLen > 0 && curLen + tlen > TARGET) flush();
+    cur.html += p;
+    curLen += tlen;
+    idx++;
+  }
+  if (curLen > 0) flush();
+  return chapters;
+}
+
+function deriveTitle(html) {
+  // 取首个加粗/大号文本作为章节标题
+  const m = html.match(/<b[^>]*>([\s\S]{2,40}?)<\/b>/i) || html.match(/<font[^>]*>([\s\S]{2,40}?)<\/font>/i);
+  if (m) {
+    const t = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (t && t.length >= 2 && t.length <= 40) return t;
+  }
+  const firstText = html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 30);
+  return firstText || '';
+}
+
+------ 第 92 页 / 共 93 页 ------
+
+function stripTags(s) {
+  return s.replace(/<[^>]+>/g, '');
+}
+
+/* ===== 文件: www/js/pdfview.js ===== */
+// PDF 阅读支持：用 pdf.js 按需动态加载，把每一页渲染为图片（适配扫描/图片型 PDF）
+// 文字层缺失的 PDF 无法重排，整页图片渲染是墨水屏上最稳的阅读方式。
+let pdfjsMod = null;
+
+async function getPdfjs() {
+  if (!pdfjsMod) {
+    pdfjsMod = await import('./vendor/pdf.min.js');
+    pdfjsMod.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdf.worker.min.js', import.meta.url).href;
+  }
+  return pdfjsMod;
+}
+
+// 打开 PDF，返回 doc 句柄（持有 pdfBytes）
+// 注意：pdf.js 在 worker 模式下会“转移(detach)”传入的 ArrayBuffer，
+// 因此这里传入副本，保护调用方的原始字节（存库/二次打开不会被破坏）。
+export async function openPdf(uint8) {
+  const pdfjs = await getPdfjs();
+  return pdfjs.getDocument({ data: uint8.slice() }).promise;
+}
+
+// 把第 pageIndex 页渲染为 JPEG dataURL；targetW 控制清晰度上限，避免吃内存
+export async function renderPdfPage(doc, pageIndex, targetW) {
+  const page = await doc.getPage(pageIndex + 1);
+  const base = page.getViewport({ scale: 1 });
+  const scale = targetW / base.width;
+  const vp = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.ceil(vp.width));
+  canvas.height = Math.max(1, Math.ceil(vp.height));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  const url = canvas.toDataURL('image/jpeg', 0.82);
+  if (page.cleanup) page.cleanup();
+  return { url, w: canvas.width, h: canvas.height };
+}
+
+/* ===== 文件: android/app/src/main/java/com/rayyang/inkstone/MainActivity.java ===== */
+package com.rayyang.inkstone;
+
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {}
+
+------ 第 93 页 / 共 93 页 ------
+
+/* ===== 文件: android/app/src/main/AndroidManifest.xml ===== */
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
+
+（本页 44 行）

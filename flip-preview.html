@@ -16,8 +16,8 @@
 
   /* ===== 三主题变量（与 app 一致） ===== */
   body[data-theme="ink"] {
-    --bg: #efe9dc; --fg: #202b31; --fg-soft: #5d6b72;
-    --bar-bg: #e3dcca; --bar-fg: #202b31; --accent: #2f6f7a; --border: #cec4b1;
+    --bg: #f4eddc; --fg: #202b31; --fg-soft: #5d6b72;
+    --bar-bg: #e8dec8; --bar-fg: #202b31; --accent: #2f6f7a; --border: #d3c8b1;
   }
   body[data-theme="simple"] {
     --bg: #f7f6f2; --fg: #1f1f1f; --fg-soft: #6a6a6a;
@@ -28,13 +28,20 @@
     --bar-bg: #d3e4d1; --bar-fg: #243a2e; --accent: #1f9e83; --border: #bcd6b6;
   }
   body[data-theme="ink"]::after {
-    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5; mix-blend-mode:multiply;
-    background-image: radial-gradient(120% 80% at 82% 0%, rgba(47,111,122,.07), transparent 60%),
-      radial-gradient(100% 70% at 8% 100%, rgba(32,43,49,.06), transparent 55%);
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; mix-blend-mode:multiply;
+    background-image:
+      radial-gradient(68% 52% at 16% 10%, rgba(193,166,116,.10), transparent 60%),
+      radial-gradient(60% 48% at 86% 90%, rgba(150,120,78,.08), transparent 60%),
+      radial-gradient(120% 95% at 50% 38%, rgba(255,251,242,0), rgba(206,184,140,.13) 100%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/></svg>");
+    background-size: 100% 100%, 100% 100%, 100% 100%, 300px 300px;
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
   }
   body[data-theme="bamboo"]::after {
-    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5; mix-blend-mode:multiply;
-    background-image: repeating-linear-gradient(90deg, rgba(40,120,90,0) 0, rgba(40,120,90,0) 25px, rgba(40,120,90,.07) 25px, rgba(40,120,90,.07) 26px);
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; mix-blend-mode:multiply;
+    background-image:
+      linear-gradient(0deg, transparent 0 29%, rgba(150,110,60,.30) 29% 30.6%, transparent 30.6% 69.4%, rgba(150,110,60,.30) 69.4% 71%, transparent 71% 100%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 22px, rgba(31,158,131,.16) 22px 24px);
   }
   body { background: var(--bg); color: var(--fg); }
 
@@ -72,9 +79,13 @@
   #reader .bamboo-flip { position:absolute; inset:0; z-index:4; display:flex; pointer-events:none; perspective:1000px; }
   #reader .bamboo-strip { flex:1 1 0; height:100%; transform-origin:center center;
     background: linear-gradient(90deg,#b6d6ad,#d9ecd2 50%,#b6d6ad); border-right:1px solid rgba(40,120,90,.25); box-shadow: inset 0 0 0 1px rgba(60,140,105,.12); }
-  #reader .bamboo-roll { position:absolute; top:0; bottom:0; right:0; width:18px; z-index:6; pointer-events:none;
-    background: linear-gradient(90deg, rgba(60,140,105,0), #a9cda0 35%, #d9ecd2 50%, #a9cda0 65%, rgba(60,140,105,0));
-    border-radius:9px; box-shadow:0 0 12px rgba(40,120,90,.35), inset 0 0 0 1px rgba(60,140,105,.25); }
+  #reader .bamboo-spine { position:absolute; left:0; top:0; bottom:0; width:14px; z-index:6; pointer-events:none;
+    background: linear-gradient(90deg, #6fae86, #cfe7c9 45%, #6fae86);
+    box-shadow:3px 0 10px rgba(20,90,60,.40), inset 0 0 0 1px rgba(31,158,131,.35); border-radius:0 7px 7px 0; }
+  #reader .bamboo-leaf::after { content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply;
+    background-image:
+      linear-gradient(0deg, transparent 0 29%, rgba(150,110,60,.32) 29% 30.6%, transparent 30.6% 69.4%, rgba(150,110,60,.32) 69.4% 71%, transparent 71% 100%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 22px, rgba(31,158,131,.20) 22px 24px); }
   #reader .flip-leaf { position:absolute; inset:0; z-index:5; pointer-events:none; backface-visibility:hidden; transform-style:preserve-3d; }
   #reader .flip-shade { position:absolute; inset:0; pointer-events:none; background: var(--flip-shade, none); }
 
@@ -89,7 +100,7 @@
 </style>
 </head>
 <body data-theme="ink">
-  <div class="hint">三主题「翻页 + 排版」实测：切换主题→点「翻页 ›」。<br>墨水风=墨迹淡化·字浮现(已放慢) / 简约=右下角立体翻书 / 竹简=青绿竹片翻开</div>
+  <div class="hint">三主题「翻页 + 排版」实测：切换主题→点「翻页 ›」。<br>墨水风=宣纸底·墨迹淡化字浮现(已放慢) / 简约=真实翻书(克隆页绕书脊) / 竹简=从左书脊翻页·竖竹片+编绳·左侧竹轴</div>
 
   <div class="reader" id="reader">
     <div class="page-viewport" id="page-viewport">
@@ -161,19 +172,21 @@
     wait(640).then(function(){ leaf.remove(); isFlipping=false; });
   }
   function flipBamboo(){
-    var roll=document.createElement('div'); roll.className='bamboo-roll';
-    vp.appendChild(roll);
-    page.style.setProperty('transition','transform .5s cubic-bezier(.5,0,.3,1), opacity .5s ease','important');
-    page.style.transformOrigin='right center';
-    page.style.transform='scaleX(0.02)'; page.style.opacity='0.9';
-    wait(500).then(function(){
-      mutate();
-      page.style.transform='scaleX(0.02)'; page.style.opacity='0.9';
-      void page.offsetWidth;
-      page.style.setProperty('transition','transform .55s cubic-bezier(.3,0,.2,1), opacity .55s ease','important');
-      page.style.transform='scaleX(1)'; page.style.opacity='1';
-      return wait(560);
-    }).then(function(){ roll.remove(); endFlip(); });
+    var isNext = dir==='next';
+    var end = isNext ? -180 : 180;
+    var shade = 'linear-gradient(to right, rgba(31,158,131,0) 25%, rgba(20,90,60,0.30))';
+    var spine=document.createElement('div'); spine.className='bamboo-spine';
+    vp.appendChild(spine);
+    var leaf=document.createElement('div'); leaf.className='page flip-leaf bamboo-leaf';
+    leaf.innerHTML=page.innerHTML+'<div class="flip-shade"></div>';
+    leaf.style.zIndex='5'; leaf.style.pointerEvents='none';
+    leaf.style.transformOrigin='left center';
+    leaf.style.setProperty('--flip-shade', shade, 'important');
+    vp.appendChild(leaf);
+    mutate();
+    leaf.style.setProperty('transition','transform .62s cubic-bezier(.45,.05,.3,1)','important');
+    leaf.style.transform='rotateY('+end+'deg)';
+    wait(660).then(function(){ leaf.remove(); spine.remove(); isFlipping=false; });
   }
   function mutate(){
     i=(i+1)%pages.length;
@@ -183,7 +196,7 @@
   document.getElementById('flip').addEventListener('click', function(){
     if(isFlipping) return; isFlipping=true;
     if(theme==='ink') return flipInk();
-    if(theme==='bamboo') return flipBamboo();
+    if(theme==='bamboo') return flipBamboo('next');
     return flipBook('next');
   });
   document.querySelectorAll('.seg button').forEach(function(b){

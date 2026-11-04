@@ -10,6 +10,7 @@ import { paginateChapter, chapterCharCount } from './paginate.js';
 import { parseTxt, parseEpub, parsePdf, parseMobi, parseFb2, parseHtml, parseDocx } from './importers.js';
 import { openPdf, renderPdfPage } from './pdfview.js';
 import { translateText } from './translate.js';
+import { App } from '@capacitor/app';
 import {
   aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiTags, aiBilingual, pageParagraphs, renderMarkdown,
 } from './ai.js';
@@ -28,7 +29,80 @@ const THEMES = [
   { id: 'bamboo', name: '竹简' },
 ];
 const THEME_PREVIEW = {
-  ink: ['#efe9dc', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'], bamboo: ['#e9dcc0', '#3a3120'],
+  ink: ['#f4eddc', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'], bamboo: ['#e2efe1', '#243a2e'],
+};
+
+// 法律声明文案（隐私政策 / 用户协议 / 权限说明）。iOS 与华为两平台通用，纯本地静态内容，无服务器依赖。
+// 联系邮箱、生效日期等需按实际情况替换（下方以占位给出）。
+const LEGAL_EFFECTIVE_DATE = '2026-11-04';
+const LEGAL_CONTACT_EMAIL = 'inkstone-dev@example.com'; // 待你替换为真实联系邮箱
+const LEGAL_CONTENT = {
+  privacy: {
+    title: '隐私政策',
+    html: `
+      <p>生效日期：${LEGAL_EFFECTIVE_DATE}</p>
+      <p>砚白 Inkstone（以下简称"本应用"）是一款<b>本地优先</b>的电子书阅读器。我们极其重视你的隐私，并遵循"数据最小化"原则。本政策说明我们如何处理信息。</p>
+      <h2>一、我们收集的信息</h2>
+      <p>本应用默认完全在你的设备本地运行，<b>不要求注册账号</b>，不收集任何个人信息即可使用核心阅读功能。保存在你设备上的数据仅包括：导入的书籍文件、阅读进度与书签、排版与主题等设置，以及在你主动启用 AI 功能时保存的第三方 API Key（仅存本机）。这些数据均保存在你的设备本地存储/应用沙盒中，<b>不会自动上传到任何服务器</b>（本应用没有后端服务器）。</p>
+      <h2>二、AI 与联网功能</h2>
+      <p>当你主动开启"AI 引擎"或"翻译"并填入第三方提供方的 API Key 后，阅读页的"译 / AI 解释"、AI 助手（导读 / 问答 / 笔记 / 双语对照）会将你选中的文本或本书内容发送给你所配置的大模型 / 翻译服务（如 DeepL、Google、OpenAI 及兼容接口）。这些数据由对应第三方按其各自隐私政策处理，传输与存储责任由该提供方承担。你随时可在设置中关闭 AI 功能并清除 Key，关闭后相关联网行为即停止。</p>
+      <h2>三、网络权限</h2>
+      <p>本应用申请"网络"权限，仅用于上述 AI / 翻译请求以及极少量的版本检查；书籍导入、阅读、笔记均不依赖网络。</p>
+      <h2>四、我们不会出售或共享你的个人信息</h2>
+      <p>除法律法规要求或你主动开启的第三方服务外，我们不会向任何第三方披露、出售或交易你的数据。</p>
+      <h2>五、儿童隐私</h2>
+      <p>本应用不专门面向未满 14 周岁的儿童，我们不会有意收集儿童个人信息。</p>
+      <h2>六、你的权利</h2>
+      <p>你可以随时通过卸载应用，或在系统设置中清除应用数据，来删除全部本地数据。</p>
+      <h2>七、政策变更</h2>
+      <p>如本政策发生变更，我们将在应用内更新并以最新版本为准。</p>
+      <h2>八、联系我们</h2>
+      <p>如你对隐私事宜有疑问，可通过邮箱 ${LEGAL_CONTACT_EMAIL} 联系我们。</p>
+    `,
+  },
+  terms: {
+    title: '用户协议',
+    html: `
+      <p>生效日期：${LEGAL_EFFECTIVE_DATE}</p>
+      <p>欢迎使用砚白 Inkstone。使用本应用即表示你同意以下条款。</p>
+      <h2>一、软件许可</h2>
+      <p>在遵守本协议的前提下，我们授予你一项<b>非独占、可撤销</b>的有限许可，允许你在自有设备上为个人非商业目的安装与使用本应用。</p>
+      <h2>二、使用规范</h2>
+      <ul>
+        <li>不得利用本应用从事任何违反法律法规的活动；</li>
+        <li>你导入的书籍应保证拥有合法授权，因内容版权产生的责任由你自行承担；</li>
+        <li>不得对本应用进行反向工程、反编译或试图提取源代码（法律允许的情形除外）。</li>
+      </ul>
+      <h2>三、知识产权</h2>
+      <p>本应用软件的著作权归开发者所有；应用内所展示的书籍内容版权归原作者或出版方所有，本应用不因此获得任何内容授权。</p>
+      <h2>四、AI 内容免责</h2>
+      <p>AI 生成内容由第三方模型产生，仅供参考，不构成专业建议；其准确性、完整性由提供方负责，使用者应自行判断并自负其责。</p>
+      <h2>五、免责声明</h2>
+      <p>本应用"按现状"提供，不保证无中断、无错误或永久可用。因使用或无法使用本应用而产生的风险与损失，由你自行承担。</p>
+      <h2>六、协议终止</h2>
+      <p>如你违反本协议，开发者有权终止对你的许可；终止后你应停止使用并删除本应用。</p>
+      <h2>七、适用法律</h2>
+      <p>本协议的订立、效力与争议解决均适用中华人民共和国法律。</p>
+    `,
+  },
+  permissions: {
+    title: '权限说明',
+    html: `
+      <p>本应用以本地阅读为核心，遵循"权限最小化"原则，尽可能少地申请系统权限。</p>
+      <h2>Android</h2>
+      <ul>
+        <li><b>网络（INTERNET）</b>：仅用于 AI / 翻译请求与版本检查，不用于收集个人数据；关闭 AI 功能后基本不触发联网。</li>
+        <li><b>文件访问</b>：书籍导入通过系统文件选择器（SAF）完成，本应用<b>不申请</b>存储读写权限，无法在未经你主动选择文件的情况下访问设备上的其他文件。</li>
+      </ul>
+      <h2>iOS（如后续版本上架）</h2>
+      <ul>
+        <li><b>网络</b>：同上，用于 AI / 翻译与版本检查。</li>
+        <li><b>文件</b>：通过系统"文件 / 文档"选择器导入，不额外申请相册、通讯录、定位等敏感权限。</li>
+      </ul>
+      <h2>我们不申请的权限</h2>
+      <p>本应用不申请相机、定位、通讯录、麦克风、电话、短信等敏感权限；所有核心阅读与笔记功能均可在不授权任何敏感权限的情况下离线使用。</p>
+    `,
+  },
 };
 
 // ---------- 状态 ----------
@@ -514,29 +588,33 @@ async function flipBook(dir, mutate) {
   isFlipping = false;
 }
 
-// ③ 竹简：卷轴收起——当前页向上卷入顶部竹轴（收起），新页自竹轴向下舒卷
+// ③ 竹简：从左书脊翻页——当前竹页绕左侧竹轴翻走，露出下方新页（竹片+编绳的竹页）
 async function flipBamboo(dir, mutate) {
   const page = $('page');
   const vp = $('page-viewport');
-  const roll = document.createElement('div');
-  roll.className = 'bamboo-roll';
-  vp.appendChild(roll);
-  // 旧页向上卷起、收进顶部竹轴
-  page.style.setProperty('transition', 'transform .5s cubic-bezier(.5,0,.3,1), opacity .4s ease', 'important');
-  page.style.transformOrigin = 'top center';
-  page.style.transform = 'scaleY(0.02)';
-  page.style.opacity = '0.9';
-  await wait(500);
-  mutate();            // 真实 #page 已渲染下一页
-  page.style.transform = 'scaleY(0.02)';
-  page.style.opacity = '0.9';
-  void page.offsetWidth;
-  // 新页自顶部竹轴向下舒卷展开
-  page.style.setProperty('transition', 'transform .55s cubic-bezier(.3,0,.2,1), opacity .45s ease', 'important');
-  page.style.transform = 'scaleY(1)';
-  page.style.opacity = '1';
-  await wait(560);
-  roll.remove();
+  const isNext = dir === 'next';
+  const end = isNext ? -180 : 180;
+  // 翻页过程中，远离书脊的一侧略暗，模拟竹页翻动时的弧度
+  const shade = 'linear-gradient(to right, rgba(31,158,131,0) 25%, rgba(20,90,60,0.30))';
+  // 左侧竹轴（书脊）
+  const spine = document.createElement('div');
+  spine.className = 'bamboo-spine';
+  vp.appendChild(spine);
+  // 克隆当前页为"翻走的竹页"
+  const leaf = document.createElement('div');
+  leaf.className = 'page flip-leaf bamboo-leaf';
+  leaf.innerHTML = page.innerHTML + '<div class="flip-shade"></div>';
+  leaf.style.zIndex = '5';
+  leaf.style.pointerEvents = 'none';
+  leaf.style.transformOrigin = 'left center';
+  leaf.style.setProperty('--flip-shade', shade, 'important');
+  vp.appendChild(leaf);
+  await mutate(); // 真实 #page 已渲染下一页（藏于 leaf 之下）
+  leaf.style.setProperty('transition', 'transform .62s cubic-bezier(.45,.05,.3,1)', 'important');
+  leaf.style.transform = `rotateY(${end}deg)`;
+  await wait(660);
+  leaf.remove();
+  spine.remove();
   endFlip();
 }
 function wait(ms) {
@@ -596,8 +674,11 @@ async function openBook(id) {
   buildToc();
   buildBookmarks();
   startReadingTimer();
+  // 进入阅读器：把来源视图压入返回栈（通常为书架）
+  if (currentView !== 'reader') navStack.push(currentView);
+  currentView = 'reader';
 }
-function backToShelf() {
+function exitReader() {
   hideTranslate();
   stopReadingTimer();
   if (currentPdfDoc) {
@@ -606,20 +687,64 @@ function backToShelf() {
     pdfImageCache.clear();
   }
   $('reader').classList.add('hidden');
-  $('shelf').classList.remove('hidden');
   document.body.classList.remove('reader-active');
   currentBook = null;
   renderShelf();
 }
 
-// ---------- 底部导航：在书架 / 统计 / 设置 三个主页面间切换 ----------
-const VIEW_ID = { shelf: 'shelf', stats: 'view-stats', settings: 'view-settings' };
-function showView(v) {
+// ---------- 导航与返回栈：书架/统计/设置/法律 为子视图，阅读器为独立层 ----------
+const VIEW_ID = { shelf: 'shelf', stats: 'view-stats', settings: 'view-settings', legal: 'view-legal' };
+let navStack = [];        // 视图历史（不含当前）
+let currentView = 'shelf'; // 当前视图
+let lastBackTs = 0;       // 根视图"双击退出"计时
+
+// 仅显示某个子视图（书架/统计/设置/法律），隐藏阅读器
+function showSubView(v) {
   const target = VIEW_ID[v];
-  ['shelf', 'view-stats', 'view-settings'].forEach((id) => $(id).classList.toggle('hidden', id !== target));
+  ['shelf', 'view-stats', 'view-settings', 'view-legal'].forEach((id) => $(id).classList.toggle('hidden', id !== target));
   document.querySelectorAll('#tabbar .tab').forEach((t) => t.classList.toggle('active', t.dataset.view === v));
   document.body.classList.remove('reader-active');
+}
+// 导航到子视图：forward 时压栈；fromBack 不压栈；reset 清空历史（底部 Tab 切换用）
+function showView(v, opts = {}) {
+  if (opts.reset) navStack = [];
+  if (!opts.fromBack && v !== currentView) navStack.push(currentView);
+  currentView = v;
+  showSubView(v);
   if (v === 'stats') renderStats('day');
+}
+// 返回上一视图：阅读器单独处理（含清理）；根视图双击退出（主流 App 做法）
+function goBack() {
+  if (currentView === 'reader') {
+    exitReader();
+    const prev = navStack.length ? navStack.pop() : 'shelf';
+    currentView = prev; showSubView(prev);
+    return;
+  }
+  if (navStack.length) {
+    const prev = navStack.pop();
+    currentView = prev; showSubView(prev);
+  } else {
+    handleRootBack();
+  }
+}
+function handleRootBack() {
+  const now = Date.now();
+  if (now - lastBackTs < 2000) {
+    try { App.exitApp(); } catch (e) {}
+  } else {
+    lastBackTs = now;
+    showToast('再按一次退出');
+  }
+}
+
+// ---------- 法律声明：隐私政策 / 用户协议 / 权限说明 ----------
+function openLegal(which) {
+  const doc = LEGAL_CONTENT[which] || LEGAL_CONTENT.privacy;
+  showView('legal');
+  $('legal-title').textContent = doc.title;
+  $('legal-body').innerHTML = doc.html;
+  document.querySelectorAll('.legal-tab').forEach((t) => t.classList.toggle('active', t.dataset.legal === which));
 }
 
 // ---------- 面板 ----------
@@ -1144,7 +1269,7 @@ function bindEvents() {
   });
 
   // 阅读器导航
-  $('btn-back').addEventListener('click', backToShelf);
+  $('btn-back').addEventListener('click', goBack);
   $('btn-prev').addEventListener('click', prevPage);
   $('btn-next').addEventListener('click', nextPage);
   $('btn-toc').addEventListener('click', () => openPanel('panel-toc'));
@@ -1244,14 +1369,27 @@ function bindEvents() {
   });
   initTranslateSelection();
 
-  // 底部导航栏：在 书架 / 统计 / 设置 之间切换
+  // 底部导航栏：切换主 Tab 时清空返回历史（主流 App 行为）
   document.querySelectorAll('#tabbar .tab').forEach((t) => {
-    t.addEventListener('click', () => showView(t.dataset.view));
+    t.addEventListener('click', () => showView(t.dataset.view, { reset: true }));
   });
-  // 独立页面的「返回书架」按钮
+  // 独立页面的导航：带 data-back 的"返回"按钮走返回栈；其余为前进导航
   document.querySelectorAll('[data-nav]').forEach((b) => {
-    b.addEventListener('click', () => showView(b.dataset.nav));
+    b.addEventListener('click', () => {
+      if (b.dataset.back) { goBack(); return; }
+      showView(b.dataset.nav);
+      if (b.dataset.legal) openLegal(b.dataset.legal);
+    });
   });
+  // 法律声明页内的三个标签切换
+  document.querySelectorAll('.legal-tab').forEach((b) => {
+    b.addEventListener('click', () => openLegal(b.dataset.legal));
+  });
+
+  // Android 硬件返回键：交给返回栈处理（不直退应用）。仅在原生外壳生效，Web 端无效（不影响）。
+  try {
+    App.addListener('backButton', () => goBack());
+  } catch (e) {}
   // 翻页动画开关
   $('set-flip').addEventListener('change', (e) => {
     settings.pageFlip = e.target.checked;
