@@ -1,7 +1,7 @@
 // 砚白 Inkstone — 真实页面冒烟测试 + 全页面截图
 // 1) 启动本地静态服务器托管 www（ES Module 需正确 MIME）
 // 2) 用 Playwright 加载应用，断言本次新增控件确实接在 DOM 上（功能冒烟）
-// 3) 对空书架 / 平铺书架 / 分组书架 / 阅读器 / 设置 / AI 面板 / 统计面板 各截一张图
+// 3) 对空书架 / 平铺书架 / 分组书架 / 阅读器 / 设置页 / AI 面板 / 统计页 各截一张图
 // 运行：node tests/capture-screenshots.mjs
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -153,20 +153,7 @@ await page.locator('#page-viewport').click({ position: { x: 195, y: 400 } });
 await page.waitForTimeout(200);
 await page.screenshot({ path: join(OUT, '03-reader.png') });
 
-// B4：设置面板（含打卡阈值 + 书架分组开关）
-await page.locator('#btn-settings').click();
-await page.waitForTimeout(300);
-ok(await page.locator('#panel-settings.open').count() === 1, '设置面板：可打开');
-ok(await page.locator('#set-checkin').count() === 1, '设置面板：含「打卡阈值」滑块');
-ok(await page.locator('#set-group-tag').count() === 1, '设置面板：含「书架按 AI 类型分组」开关');
-// 设置面板可滚动，且新控件在末尾，截图前滚到底以露出「阅读与书架」分组
-await page.evaluate(() => { const el = document.querySelector('#panel-settings'); if (el) el.scrollTop = el.scrollHeight; });
-await page.waitForTimeout(150);
-await page.screenshot({ path: join(OUT, '04-settings.png') });
-await page.locator('#panel-settings .panel-close').click();
-await page.waitForTimeout(150);
-
-// B5：AI 面板
+// B4：AI 面板（仍在阅读器中，右侧滑面板）
 await page.locator('#btn-ai').click();
 await page.waitForTimeout(300);
 ok(await page.locator('#panel-ai.open').count() === 1, 'AI 面板：可打开');
@@ -175,18 +162,39 @@ await page.screenshot({ path: join(OUT, '05-ai-panel.png') });
 await page.locator('#panel-ai .panel-close').click();
 await page.waitForTimeout(150);
 
-// B6：统计面板（日）
-await page.locator('#btn-stats').click();
+// 返回书架，改用底部导航进入独立页面
+await page.locator('#btn-back').click();
 await page.waitForTimeout(300);
-ok(await page.locator('#panel-stats.open').count() === 1, '统计面板：可打开');
-ok(await page.locator('#ss-total').innerText().then((t) => /分钟/.test(t)), '统计面板：显示总时长');
-ok((await page.locator('.stats-book-row').count()) >= 2, '统计面板：列出各书阅读时长');
+
+// B5：设置页（独立页面：主题皮肤色板 + 打卡阈值 + 书架分组开关 + 翻页动画）
+ok(await page.locator('#tabbar').isVisible(), '返回书架后底部导航栏可见');
+await page.locator('#tabbar .tab[data-view="settings"]').click();
+await page.waitForTimeout(300);
+ok(await page.locator('#view-settings').isVisible(), '设置页：独立页面可打开');
+ok((await page.locator('#theme-swatches .swatch').count()) >= 6, '设置页：主题皮肤色板至少 6 个');
+ok(await page.locator('#set-checkin').count() === 1, '设置页：含「打卡阈值」滑块');
+ok(await page.locator('#set-group-tag').count() === 1, '设置页：含「书架按 AI 类型分组」开关');
+ok(await page.locator('#set-flip').count() === 1, '设置页：含「翻页动画」开关');
+// 先截顶部（主题皮肤色板 + 字体 + 排版 + 屏幕与翻页），再滚到底截 AI 引擎 + 阅读与书架
+await page.evaluate(() => { const el = document.querySelector('#view-settings .settings-body'); if (el) el.scrollTop = 0; });
+await page.waitForTimeout(120);
+await page.screenshot({ path: join(OUT, '04-settings.png') });
+await page.evaluate(() => { const el = document.querySelector('#view-settings .settings-body'); if (el) el.scrollTop = el.scrollHeight; });
+await page.waitForTimeout(150);
+await page.screenshot({ path: join(OUT, '04b-settings-ai.png') });
+
+// B6：统计页（独立页面，日）
+await page.locator('#tabbar .tab[data-view="stats"]').click();
+await page.waitForTimeout(300);
+ok(await page.locator('#view-stats').isVisible(), '统计页：独立页面可打开');
+ok(await page.locator('#ss-total').innerText().then((t) => /分钟/.test(t)), '统计页：显示总时长');
+ok((await page.locator('.stats-book-row').count()) >= 2, '统计页：列出各书阅读时长');
 await page.screenshot({ path: join(OUT, '06-stats-day.png') });
 
-// B7：统计面板（周）
+// B7：统计页（周）
 await page.locator('.stats-tab[data-stats-tab="week"]').click();
 await page.waitForTimeout(200);
-ok(await page.locator('.stats-tab[data-stats-tab="week"].active').count() === 1, '统计面板：周 tab 可切换');
+ok(await page.locator('.stats-tab[data-stats-tab="week"].active').count() === 1, '统计页：周 tab 可切换');
 await page.screenshot({ path: join(OUT, '07-stats-week.png') });
 
 ok(errorsB.length === 0, '全场景：无 JS 运行时报错' + (errorsB.length ? ' → ' + errorsB.join('; ') : ''));

@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#f6f5ef" />
+    <meta name="theme-color" content="#eceae2" />
     <title>砚白 · Inkstone</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body data-theme="eink" data-font="serif">
     <!-- ============ 书架 ============ -->
-    <section id="shelf" class="screen">
+    <section id="shelf" class="screen view">
       <header class="shelf-head">
         <div class="brand">
           <span class="brand-mark">砚</span>
@@ -48,6 +48,158 @@
       <div id="drop-hint" class="drop-hint">把 .txt / .epub / .pdf / .mobi / .azw 拖到这里导入 · AZW3/KFX 请用 Calibre 转成 EPUB 再导入</div>
     </section>
 
+    <!-- ============ 阅读统计（独立页面） ============ -->
+    <section id="view-stats" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="shelf">‹ 书架</button>
+        <div class="page-head-title">阅读统计</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="stats-tabs ai-tabs">
+        <button class="stats-tab active" data-stats-tab="day">日</button>
+        <button class="stats-tab" data-stats-tab="week">周</button>
+        <button class="stats-tab" data-stats-tab="month">月</button>
+      </div>
+      <div class="stats-body">
+        <div class="stats-summary">
+          <div class="ss-item"><div class="ss-val" id="ss-total">0 分钟</div><div class="ss-label">总时长</div></div>
+          <div class="ss-item"><div class="ss-val" id="ss-books">0 本</div><div class="ss-label">阅读书目</div></div>
+          <div class="ss-item"><div class="ss-val" id="ss-checkin">未打卡</div><div class="ss-label">打卡</div></div>
+        </div>
+        <div id="stats-booklist" class="stats-booklist"></div>
+      </div>
+    </section>
+
+    <!-- ============ 个人设置（独立页面） ============ -->
+    <section id="view-settings" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="shelf">‹ 书架</button>
+        <div class="page-head-title">设置</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="settings-body">
+        <div class="settings-group">
+          <div class="group-title">外观 · 皮肤</div>
+          <div class="group-body">
+            <div class="field">
+              <label>主题皮肤（点击即可切换）</label>
+              <div class="theme-swatches" id="theme-swatches"></div>
+            </div>
+            <div class="field">
+              <label>字体</label>
+              <div class="seg" id="seg-font">
+                <button data-val="serif">衬线</button>
+                <button data-val="sans">黑体</button>
+                <button data-val="mono">等宽</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">排版</div>
+          <div class="group-body">
+            <div class="field">
+              <label>字号 <span id="val-fontsize"></span></label>
+              <input type="range" id="set-fontsize" min="16" max="32" step="1" />
+            </div>
+            <div class="field">
+              <label>行距 <span id="val-lineheight"></span></label>
+              <input type="range" id="set-lineheight" min="1.2" max="2.4" step="0.05" />
+            </div>
+            <div class="field">
+              <label>边距 <span id="val-margin"></span></label>
+              <input type="range" id="set-margin" min="8" max="56" step="1" />
+            </div>
+            <div class="field">
+              <label>段距 <span id="val-paraspacing"></span></label>
+              <input type="range" id="set-paraspacing" min="0" max="1.6" step="0.1" />
+            </div>
+            <div class="field">
+              <label>字间距 <span id="val-letterspacing"></span></label>
+              <input type="range" id="set-letterspacing" min="-1" max="4" step="0.5" />
+            </div>
+            <div class="field row">
+              <label class="switch"><input type="checkbox" id="set-justify" /> 两端对齐</label>
+              <label class="switch"><input type="checkbox" id="set-indent" /> 首行缩进</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">屏幕与翻页</div>
+          <div class="group-body">
+            <div class="field">
+              <label class="switch"><input type="checkbox" id="set-flip" /> 翻页动画（翻书效果）</label>
+            </div>
+            <div class="field">
+              <label>整屏刷新（墨水屏清残影）</label>
+              <div class="seg c5" id="seg-regal">
+                <button data-val="0">关闭</button>
+                <button data-val="1">每页</button>
+                <button data-val="3">每3页</button>
+                <button data-val="6">每6页</button>
+                <button data-val="12">每12页</button>
+                <button data-val="999">每章</button>
+              </div>
+            </div>
+          </div>
+          <p class="hint group-hint">开启「翻页动画」后，前后翻页会以翻书页的方式过渡（手机端更自然）；墨水屏设备若觉得残影明显，可关闭动画并保留「整屏刷新」清残影。</p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">AI 引擎</div>
+          <div class="group-body">
+            <div class="field">
+              <label>AI 引擎（翻译 / 摘要 / 问答 / 标签 / 笔记 共用）</label>
+              <div class="seg c5" id="seg-translate-provider">
+                <button data-val="none">关闭</button>
+                <button data-val="mock">演示</button>
+                <button data-val="deepl">DeepL</button>
+                <button data-val="google">Google</button>
+                <button data-val="llm">AI 大模型</button>
+              </div>
+            </div>
+            <div class="field" id="field-tkey">
+              <label>API Key（仅存本机）</label>
+              <input type="password" id="set-tkey" placeholder="填入对应提供方的 Key" autocomplete="off" />
+            </div>
+            <div class="field" id="field-tbase">
+              <label>AI 接口地址 / 模型</label>
+              <input type="text" id="set-tbase" placeholder="https://api.openai.com/v1" style="margin-bottom:8px" autocomplete="off" />
+              <input type="text" id="set-tmodel" placeholder="模型名，如 gpt-4o-mini / deepseek-chat" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label>默认翻译方向</label>
+              <div class="seg" id="seg-tdir">
+                <button data-val="auto">自动</button>
+                <button data-val="zh2en">中→英</button>
+                <button data-val="en2zh">英→中</button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="switch"><input type="checkbox" id="set-ai-auto" /> 导入后自动生成导读</label>
+            </div>
+          </div>
+          <p class="hint group-hint">AI 引擎默认关闭，不影响离线阅读。启用「AI 大模型」并填 Key 后，阅读页可选中文字「译 / 解释」、打开「AI 助手」生成全书或本章导读、书中问答、人物脉络笔记、智能书架标签、段落双语对照。API Key 仅存本机，本应用无服务器；支持任意 OpenAI 兼容接口（DeepSeek / 通义 / 本地 Ollama）。</p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">阅读与书架</div>
+          <div class="group-body">
+            <div class="field">
+              <label>阅读打卡阈值 <span id="val-checkin"></span></label>
+              <input type="range" id="set-checkin" min="1" max="60" step="1" />
+            </div>
+            <div class="field">
+              <label class="switch"><input type="checkbox" id="set-group-tag" /> 书架按 AI 类型分组</label>
+            </div>
+          </div>
+          <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按 AI 类型分组」后，书架空按书的首个 AI 标签归类，未分类的归入「未分类」。</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ 阅读器 ============ -->
     <section id="reader" class="screen hidden">
       <div id="topbar" class="topbar">
@@ -70,9 +222,7 @@
         <div class="bb-group bb-tools">
           <button id="btn-bookmark" class="icon-btn">书签</button>
           <button id="btn-ai" class="icon-btn">AI</button>
-          <button id="btn-stats" class="icon-btn">统计</button>
           <button id="btn-toc" class="icon-btn">目录</button>
-          <button id="btn-settings" class="icon-btn">设置</button>
         </div>
       </div>
 
@@ -86,135 +236,6 @@
         <button id="bm-add" class="btn" style="margin:12px 16px; width:calc(100% - 32px)">＋ 标记当前页</button>
         <div id="bookmark-list" class="bookmark-list"></div>
       </aside>
-      <aside id="panel-settings" class="panel">
-        <div class="panel-head"><span>阅读设置</span><button class="panel-close" data-close="panel-settings">✕</button></div>
-        <div class="settings-body">
-
-          <div class="settings-group">
-            <div class="group-title">外观</div>
-            <div class="group-body">
-              <div class="field">
-                <label>主题</label>
-                <div class="seg c5" id="seg-theme">
-                  <button data-val="eink">墨水屏</button>
-                  <button data-val="light">纸白</button>
-                  <button data-val="sepia">护眼</button>
-                  <button data-val="dark">夜间</button>
-                  <button data-val="paper">纯白</button>
-                </div>
-              </div>
-              <div class="field">
-                <label>字体</label>
-                <div class="seg" id="seg-font">
-                  <button data-val="serif">衬线</button>
-                  <button data-val="sans">黑体</button>
-                  <button data-val="mono">等宽</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-group">
-            <div class="group-title">排版</div>
-            <div class="group-body">
-              <div class="field">
-                <label>字号 <span id="val-fontsize"></span></label>
-                <input type="range" id="set-fontsize" min="16" max="32" step="1" />
-              </div>
-              <div class="field">
-                <label>行距 <span id="val-lineheight"></span></label>
-                <input type="range" id="set-lineheight" min="1.2" max="2.4" step="0.05" />
-              </div>
-              <div class="field">
-                <label>边距 <span id="val-margin"></span></label>
-                <input type="range" id="set-margin" min="8" max="56" step="1" />
-              </div>
-              <div class="field">
-                <label>段距 <span id="val-paraspacing"></span></label>
-                <input type="range" id="set-paraspacing" min="0" max="1.6" step="0.1" />
-              </div>
-              <div class="field">
-                <label>字间距 <span id="val-letterspacing"></span></label>
-                <input type="range" id="set-letterspacing" min="-1" max="4" step="0.5" />
-              </div>
-              <div class="field row">
-                <label class="switch"><input type="checkbox" id="set-justify" /> 两端对齐</label>
-                <label class="switch"><input type="checkbox" id="set-indent" /> 首行缩进</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-group">
-            <div class="group-title">屏幕</div>
-            <div class="group-body">
-              <div class="field">
-                <label>整屏刷新（墨水屏清残影）</label>
-                <div class="seg" id="seg-regal">
-                  <button data-val="0">关闭</button>
-                  <button data-val="1">每页</button>
-                  <button data-val="3">每3页</button>
-                  <button data-val="6">每6页</button>
-                  <button data-val="12">每12页</button>
-                  <button data-val="999">每章</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-group">
-            <div class="group-title">AI 引擎</div>
-            <div class="group-body">
-              <div class="field">
-                <label>AI 引擎（翻译 / 摘要 / 问答 / 标签 / 笔记 共用）</label>
-                <div class="seg c5" id="seg-translate-provider">
-                  <button data-val="none">关闭</button>
-                  <button data-val="mock">演示</button>
-                  <button data-val="deepl">DeepL</button>
-                  <button data-val="google">Google</button>
-                  <button data-val="llm">AI 大模型</button>
-                </div>
-              </div>
-              <div class="field" id="field-tkey">
-                <label>API Key（仅存本机）</label>
-                <input type="password" id="set-tkey" placeholder="填入对应提供方的 Key" autocomplete="off" />
-              </div>
-              <div class="field" id="field-tbase">
-                <label>AI 接口地址 / 模型</label>
-                <input type="text" id="set-tbase" placeholder="https://api.openai.com/v1" style="margin-bottom:8px" autocomplete="off" />
-                <input type="text" id="set-tmodel" placeholder="模型名，如 gpt-4o-mini" autocomplete="off" />
-              </div>
-              <div class="field">
-                <label>默认翻译方向</label>
-                <div class="seg" id="seg-tdir">
-                  <button data-val="auto">自动</button>
-                  <button data-val="zh2en">中→英</button>
-                  <button data-val="en2zh">英→中</button>
-                </div>
-              </div>
-              <div class="field">
-                <label class="switch"><input type="checkbox" id="set-ai-auto" /> 导入后自动生成导读</label>
-              </div>
-            </div>
-            <p class="hint group-hint">AI 引擎默认关闭，不影响离线阅读。启用「AI 大模型」并填 Key 后，阅读页可选中文字「译 / 解释」、打开「AI 助手」生成全书或本章导读、书中问答、人物脉络笔记、智能书架标签、段落双语对照。API Key 仅存本机，本应用无服务器；支持任意 OpenAI 兼容接口（DeepSeek / 通义 / 本地 Ollama）。</p>
-          </div>
-
-          <div class="settings-group">
-            <div class="group-title">阅读与书架</div>
-            <div class="group-body">
-              <div class="field">
-                <label>阅读打卡阈值 <span id="val-checkin"></span></label>
-                <input type="range" id="set-checkin" min="1" max="60" step="1" />
-              </div>
-              <div class="field">
-                <label class="switch"><input type="checkbox" id="set-group-tag" /> 书架按 AI 类型分组</label>
-              </div>
-            </div>
-            <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按 AI 类型分组」后，书架空按书的首个 AI 标签归类，未分类的归入「未分类」。</p>
-          </div>
-
-        </div>
-      </aside>
-
       <aside id="panel-ai" class="panel">
         <div class="panel-head"><span>AI 助手</span><button class="panel-close" data-close="panel-ai">✕</button></div>
         <div class="ai-tabs">
@@ -280,23 +301,22 @@
       </div>
     </section>
 
-    <!-- 阅读统计面板（置于 body 级，书架 / 阅读器均可打开） -->
-    <aside id="panel-stats" class="panel">
-      <div class="panel-head"><span>阅读统计</span><button class="panel-close" data-close="panel-stats">✕</button></div>
-      <div class="ai-tabs">
-        <button class="stats-tab active" data-stats-tab="day">日</button>
-        <button class="stats-tab" data-stats-tab="week">周</button>
-        <button class="stats-tab" data-stats-tab="month">月</button>
-      </div>
-      <div class="stats-body">
-        <div class="stats-summary">
-          <div class="ss-item"><div class="ss-val" id="ss-total">0 分钟</div><div class="ss-label">总时长</div></div>
-          <div class="ss-item"><div class="ss-val" id="ss-books">0 本</div><div class="ss-label">阅读书目</div></div>
-          <div class="ss-item"><div class="ss-val" id="ss-checkin">未打卡</div><div class="ss-label">打卡</div></div>
-        </div>
-        <div id="stats-booklist" class="stats-booklist"></div>
-      </div>
-    </aside>
+    <!-- ============ 底部导航栏 ============ -->
+    <nav id="tabbar">
+      <button class="tab active" data-view="shelf">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v15H5.5A2.5 2.5 0 0 0 3 20.5V5.5zM21 5.5A2.5 2.5 0 0 0 18.5 3H13v15h5.5A2.5 2.5 0 0 1 21 20.5V5.5z"/></svg>
+        <span>书架</span>
+      </button>
+      <button class="tab" data-view="stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12 20V9M16 20v-9"/></svg>
+        <span>统计</span>
+      </button>
+      <button class="tab" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M19.2 4.8l-1.8 1.8M6.6 17.4l-1.8 1.8"/></svg>
+        <span>设置</span>
+      </button>
+    </nav>
+
     <div id="toast" class="hidden"></div>
 
     <!-- EPUB 解压库（UMD 全局 fflate） -->

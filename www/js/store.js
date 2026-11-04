@@ -179,6 +179,7 @@ export const DEFAULT_SETTINGS = {
   paragraphSpacing: 0.7,
   firstLineIndent: true,
   regalRefresh: 6,
+  pageFlip: true, // 翻页动画（翻书效果）；墨水屏设备可关闭
   // AI 引擎（翻译/摘要/问答/标签/笔记/双语 共用的 Key 与模型配置；默认关闭，不影响离线阅读）
   translateProvider: 'none',
   translateApiKey: '',

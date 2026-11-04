@@ -21,6 +21,23 @@ const FONT_STACK = {
   mono: '"Courier New", "Noto Sans Mono", monospace',
 };
 
+// 主题皮肤（顺序即设置页色板顺序）；THEME_PREVIEW 仅用于色板预览的 bg/fg
+const THEMES = [
+  { id: 'eink', name: '墨白' },
+  { id: 'paper', name: '宣纸' },
+  { id: 'sepia', name: '茶色' },
+  { id: 'green', name: '青简' },
+  { id: 'blue', name: '黛蓝' },
+  { id: 'ink', name: '墨韵' },
+  { id: 'pure', name: '素白' },
+  { id: 'dark', name: '夜墨' },
+];
+const THEME_PREVIEW = {
+  eink: ['#eceae2', '#33312c'], paper: ['#f6f5ef', '#2b2b2b'], sepia: ['#f3e9d2', '#5a4632'],
+  green: ['#e7efe1', '#2c362a'], blue: ['#e6ecf2', '#28323c'], ink: ['#efe9dc', '#202b31'],
+  pure: ['#ffffff', '#111111'], dark: ['#161616', '#cfcfcf'],
+};
+
 // ---------- 状态 ----------
 let settings = loadSettings();
 let currentBook = null;
@@ -36,6 +53,7 @@ let currentPdfDoc = null; // PDF 阅读时持有的 pdf.js doc
 let readingTimer = null; // 阅读计时器
 let readingLastTs = 0; // 上一次计时戳
 let toastTimer = null;
+let isFlipping = false; // 翻页动画进行中，用于忽略重叠点击
 const pdfImageCache = new Map(); // ci -> 已渲染的图片 dataURL
 
 const $ = (id) => document.getElementById(id);
@@ -61,9 +79,10 @@ function applySettings() {
 }
 
 function syncSettingsUI() {
-  setSeg('seg-theme', settings.theme);
+  renderThemeSwatches();
   setSeg('seg-font', settings.fontFamily);
   setSeg('seg-regal', String(settings.regalRefresh));
+  $('set-flip').checked = !!settings.pageFlip;
   $('set-fontsize').value = settings.fontSize;
   $('val-fontsize').textContent = settings.fontSize + 'px';
   $('set-lineheight').value = settings.lineHeight;
@@ -91,6 +110,35 @@ function syncSettingsUI() {
 function setSeg(id, val) {
   $(id).querySelectorAll('button').forEach((b) => {
     b.classList.toggle('active', b.dataset.val === String(val));
+  });
+}
+
+// 主题皮肤色板：渲染为「色块 + 名称」，点击即切换并落地到设置
+function renderThemeSwatches() {
+  const wrap = $('theme-swatches');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  THEMES.forEach((t) => {
+    const prev = THEME_PREVIEW[t.id] || ['#ccc', '#333'];
+    const btn = document.createElement('button');
+    btn.className = 'swatch' + (settings.theme === t.id ? ' active' : '');
+    btn.dataset.val = t.id;
+    const chip = document.createElement('span');
+    chip.className = 'sw-chip';
+    chip.style.background = prev[0];
+    chip.style.borderColor = settings.theme === t.id ? 'var(--accent)' : prev[1];
+    const name = document.createElement('span');
+    name.className = 'sw-name';
+    name.textContent = t.name;
+    btn.appendChild(chip);
+    btn.appendChild(name);
+    btn.addEventListener('click', () => {
+      settings.theme = t.id;
+      applySettings();
+      saveSettings(settings);
+      renderThemeSwatches();
+    });
+    wrap.appendChild(btn);
   });
 }
 
@@ -370,27 +418,49 @@ async function afterPageTurn(chapterChanged) {
     regalFlash();
   }
 }
+// 翻书页动画：当前页绕边沿旋出，新页从对侧旋入；墨水屏零动画原则仅在此处临时放开
+async function flipPage(dir, mutate) {
+  const page = $('page');
+  if (!settings.pageFlip || !page) { mutate(); return; }
+  if (isFlipping) return;
+  isFlipping = true;
+  page.style.setProperty('transition', 'transform .26s ease, opacity .24s ease', 'important');
+  page.style.transformOrigin = dir === 'next' ? 'right center' : 'left center';
+  page.style.transform = dir === 'next' ? 'rotateY(-92deg)' : 'rotateY(92deg)';
+  page.style.opacity = '0.12';
+  await wait(135);
+  mutate();
+  // 跳到对侧（无过渡），再旋回正面
+  page.style.transition = 'none';
+  page.style.transform = dir === 'next' ? 'rotateY(92deg)' : 'rotateY(-92deg)';
+  void page.offsetWidth; // 强制重排
+  page.style.setProperty('transition', 'transform .26s ease, opacity .24s ease', 'important');
+  page.style.transform = 'rotateY(0deg)';
+  page.style.opacity = '1';
+  await wait(265);
+  page.style.transition = '';
+  page.style.transform = '';
+  page.style.transformOrigin = '';
+  page.style.opacity = '';
+  isFlipping = false;
+}
+function wait(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 async function nextPage() {
   hideTranslate();
   if (pi < pages.length - 1) {
-    pi++;
-    await afterPageTurn(false);
+    await flipPage('next', () => { pi++; afterPageTurn(false); });
   } else if (ci < currentBook.chapters.length - 1) {
-    ci++; pi = 0;
-    paginateCurrentChapter();
-    await afterPageTurn(true);
+    await flipPage('next', () => { ci++; pi = 0; paginateCurrentChapter(); afterPageTurn(true); });
   }
 }
 async function prevPage() {
   hideTranslate();
   if (pi > 0) {
-    pi--;
-    await afterPageTurn(false);
+    await flipPage('prev', () => { pi--; afterPageTurn(false); });
   } else if (ci > 0) {
-    ci--;
-    paginateCurrentChapter();
-    pi = pages.length - 1;
-    await afterPageTurn(true);
+    await flipPage('prev', () => { ci--; paginateCurrentChapter(); pi = pages.length - 1; afterPageTurn(true); });
   }
 }
 
@@ -421,6 +491,7 @@ async function openBook(id) {
   $('shelf').classList.add('hidden');
   $('reader').classList.remove('hidden');
   $('reader').classList.add('hide-chrome');
+  document.body.classList.add('reader-active'); // 阅读时隐藏底部导航栏
   closePanels();
   // 必须在阅读器可见后再分页：hidden 状态下 #page-viewport 高度为 0，会触发“每页 1 字”极端分支
   if (!currentPdfDoc) {
@@ -441,8 +512,19 @@ function backToShelf() {
   }
   $('reader').classList.add('hidden');
   $('shelf').classList.remove('hidden');
+  document.body.classList.remove('reader-active');
   currentBook = null;
   renderShelf();
+}
+
+// ---------- 底部导航：在书架 / 统计 / 设置 三个主页面间切换 ----------
+const VIEW_ID = { shelf: 'shelf', stats: 'view-stats', settings: 'view-settings' };
+function showView(v) {
+  const target = VIEW_ID[v];
+  ['shelf', 'view-stats', 'view-settings'].forEach((id) => $(id).classList.toggle('hidden', id !== target));
+  document.querySelectorAll('#tabbar .tab').forEach((t) => t.classList.toggle('active', t.dataset.view === v));
+  document.body.classList.remove('reader-active');
+  if (v === 'stats') renderStats('day');
 }
 
 // ---------- 面板 ----------
@@ -690,7 +772,7 @@ function renderStats(mode) {
     return;
   }
   listBooksMeta().then((metas) => {
-    if (!$('panel-stats').classList.contains('open')) return; // 面板已关，放弃填充
+    if ($('view-stats').classList.contains('hidden')) return; // 统计页已关闭，放弃填充
     const titleMap = {};
     metas.forEach((m) => (titleMap[m.id] = m.title));
     const sorted = bookIds.slice().sort((a, b) => agg.byBook[b] - agg.byBook[a]);
@@ -936,14 +1018,12 @@ function bindEvents() {
   $('btn-toc-top').addEventListener('click', () => openPanel('panel-toc'));
   $('btn-bookmark').addEventListener('click', () => { buildBookmarks(); openPanel('panel-bookmark'); });
   $('btn-ai').addEventListener('click', () => { openPanel('panel-ai'); loadCachedGuide(); });
-  $('btn-stats').addEventListener('click', () => { openPanel('panel-stats'); renderStats('day'); });
   document.querySelectorAll('.stats-tab').forEach((b) => {
     b.addEventListener('click', () => {
       document.querySelectorAll('.stats-tab').forEach((x) => x.classList.toggle('active', x === b));
       renderStats(b.dataset.statsTab);
     });
   });
-  $('btn-settings').addEventListener('click', () => openPanel('panel-settings'));
   $('bm-add').addEventListener('click', addBookmark);
 
   // AI 面板：tab 切换
@@ -981,10 +1061,6 @@ function bindEvents() {
   });
 
   // 设置控件
-  $('seg-theme').addEventListener('click', (e) => {
-    const v = e.target.dataset.val; if (!v) return;
-    settings.theme = v; applySettings(); saveSettings(settings);
-  });
   $('seg-font').addEventListener('click', (e) => {
     const v = e.target.dataset.val; if (!v) return;
     settings.fontFamily = v; applySettings(); saveSettings(settings); scheduleRepaginate();
@@ -1034,6 +1110,20 @@ function bindEvents() {
     renderShelf();
   });
   initTranslateSelection();
+
+  // 底部导航栏：在 书架 / 统计 / 设置 之间切换
+  document.querySelectorAll('#tabbar .tab').forEach((t) => {
+    t.addEventListener('click', () => showView(t.dataset.view));
+  });
+  // 独立页面的「返回书架」按钮
+  document.querySelectorAll('[data-nav]').forEach((b) => {
+    b.addEventListener('click', () => showView(b.dataset.nav));
+  });
+  // 翻页动画开关
+  $('set-flip').addEventListener('change', (e) => {
+    settings.pageFlip = e.target.checked;
+    saveSettings(settings);
+  });
 
   // 键盘（桌面）
   document.addEventListener('keydown', (e) => {
