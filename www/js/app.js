@@ -21,24 +21,23 @@ const FONT_STACK = {
 };
 
 // 主题皮肤（顺序即设置页色板顺序）；THEME_PREVIEW 仅用于色板预览的 bg/fg
+// 只保留 3 套，每套有专属翻书动画：墨水风(笔迹淡化) / 简约(位移淡入) / 竹简(竹片翻开)
 const THEMES = [
-  { id: 'eink', name: '墨白' },
-  { id: 'paper', name: '宣纸' },
-  { id: 'sepia', name: '茶色' },
-  { id: 'green', name: '青简' },
-  { id: 'blue', name: '黛蓝' },
-  { id: 'ink', name: '墨韵' },
-  { id: 'pure', name: '素白' },
-  { id: 'dark', name: '夜墨' },
+  { id: 'ink', name: '墨水风' },
+  { id: 'simple', name: '简约' },
+  { id: 'bamboo', name: '竹简' },
 ];
 const THEME_PREVIEW = {
-  eink: ['#eceae2', '#33312c'], paper: ['#f6f5ef', '#2b2b2b'], sepia: ['#f3e9d2', '#5a4632'],
-  green: ['#e7efe1', '#2c362a'], blue: ['#e6ecf2', '#28323c'], ink: ['#efe9dc', '#202b31'],
-  pure: ['#ffffff', '#111111'], dark: ['#161616', '#cfcfcf'],
+  ink: ['#efe9dc', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'], bamboo: ['#e9dcc0', '#3a3120'],
 };
 
 // ---------- 状态 ----------
 let settings = loadSettings();
+// 主题已精简为 ink / simple / bamboo；旧版本残留的 theme 值统一回退到默认墨水风
+if (!THEMES.some((t) => t.id === settings.theme)) {
+  settings.theme = DEFAULT_SETTINGS.theme;
+  saveSettings(settings);
+}
 let currentBook = null;
 let ci = 0; // 当前章节
 let pi = 0; // 当前页（章内）
@@ -417,50 +416,128 @@ async function afterPageTurn(chapterChanged) {
     regalFlash();
   }
 }
-// 翻书页动画：下一页绕左侧书脊旋出、上一页绕右侧书脊旋出（右缘/右下角为自由边掀起向左翻），
-// 新页从对侧旋入；翻动时叠加随书脊移动的渐变阴影强化“书页”立体感。墨水屏零动画原则仅在此处临时放开。
+// 翻书页动画总入口：按当前主题分发到专属翻页效果。
+// 全局 *{transition/animation:none!important}（墨水屏零动画原则）下，动画一律靠内联 !important 放行。
 async function flipPage(dir, mutate) {
   const page = $('page');
   if (!settings.pageFlip || !page) { mutate(); return; }
   if (isFlipping) return;
   isFlipping = true;
+  if (settings.theme === 'ink') return flipInk(dir, mutate);
+  if (settings.theme === 'bamboo') return flipBamboo(dir, mutate);
+  return flipBook(dir, mutate);
+}
 
-  const isNext = dir === 'next';
-  // 书脊在左：翻下一页绕左缘旋出；翻上一页绕右缘旋出。修正此前“从右侧往外掰、像从里翻”的诡异感。
-  const origin = isNext ? 'left center' : 'right center';
-  const leave = isNext ? -100 : 100;   // 旋出角度（绕书脊转离视线，背面隐藏后自然消失）
-  const enter = isNext ? 100 : -100;    // 旋入从对侧回正
-  const shade = isNext
-    ? 'linear-gradient(to right, rgba(0,0,0,.36), rgba(0,0,0,0) 46%)'   // 书脊在左，左侧偏暗
-    : 'linear-gradient(to left, rgba(0,0,0,.36), rgba(0,0,0,0) 46%)';    // 书脊在右，右侧偏暗
-
-  const T = 'transform .24s cubic-bezier(.4,.02,.25,1), opacity .18s ease';
-  // 全局有 transition:none!important（墨水屏零动画原则），这里用内联 !important 临时放开，让翻书动画生效
-  page.style.setProperty('transition', T, 'important');
-  page.style.transformOrigin = origin;
-  page.style.setProperty('--flip-shade', shade);
-  page.classList.add('flipping');
-  page.style.transform = `rotateY(${leave}deg)`;
-  page.style.opacity = '0.2';
-
-  await wait(245);          // 等旋出接近 90°（背面隐藏、内容不可见）时再换页
-  mutate();
-  page.classList.remove('flipping');   // 旋入阶段不再叠加阴影，避免生硬
-  page.style.setProperty('transition', 'none', 'important');
-  page.style.transform = `rotateY(${enter}deg)`;
-  page.style.opacity = '0.2';
-  void page.offsetWidth;     // 强制重排
-  page.style.setProperty('transition', T, 'important');
-  page.style.transform = 'rotateY(0deg)';
-  page.style.opacity = '1';
-
-  await wait(250);
+// 收尾：清掉翻页期间注入的内联样式，交还零动画原则
+function endFlip() {
+  const page = $('page');
   page.style.transition = '';
   page.style.transform = '';
   page.style.transformOrigin = '';
   page.style.opacity = '';
+  page.style.filter = '';
+  page.classList.remove('flipping');
   page.style.removeProperty('--flip-shade');
   isFlipping = false;
+}
+
+// ① 墨水风：毛笔墨迹先横扫淡化，随后下一页文字从模糊中慢慢浮现
+async function flipInk(dir, mutate) {
+  const page = $('page');
+  const vp = $('page-viewport');
+  const ov = document.createElement('div');
+  ov.className = 'ink-flip';
+  ov.innerHTML =
+    '<svg viewBox="0 0 340 470" preserveAspectRatio="none">' +
+      '<g class="ink-splats">' +
+        '<circle class="ink-splat" cx="70" cy="210" r="3"/>' +
+        '<circle class="ink-splat" cx="300" cy="250" r="2.4"/>' +
+        '<circle class="ink-splat" cx="265" cy="205" r="2"/>' +
+        '<circle class="ink-splat" cx="95" cy="262" r="1.8"/>' +
+      '</g>' +
+      '<path class="ink-stroke2" d="M70 205 C140 198 210 200 278 205 C236 214 156 214 70 205 Z"/>' +
+      '<path class="ink-stroke" d="M28 236 C92 217 176 219 256 230 C298 235 320 231 330 227 C314 250 268 256 198 251 C116 246 72 252 28 236 Z"/>' +
+    '</svg>';
+  vp.appendChild(ov);
+  void ov.offsetWidth; // 触发墨迹 keyframes 动画
+
+  // 旧页缓慢虚化退场（笔迹覆盖其上，先“化”掉）
+  page.style.setProperty('transition', 'opacity .4s ease, transform .4s ease, filter .4s ease', 'important');
+  page.style.transform = 'translateY(-10px) scale(.985)';
+  page.style.filter = 'blur(4px)';
+  page.style.opacity = '0';
+  await wait(600);
+
+  // 换页：新页从模糊里慢慢浮现
+  mutate();
+  page.style.transform = 'translateY(10px) scale(.99)';
+  page.style.filter = 'blur(6px)';
+  page.style.opacity = '0';
+  void page.offsetWidth;
+  page.style.setProperty('transition', 'opacity 1.3s ease, transform 1.3s ease, filter 1.3s ease', 'important');
+  page.style.transform = 'translateY(0) scale(1)';
+  page.style.filter = 'blur(0)';
+  page.style.opacity = '1';
+
+  await wait(1350);
+  ov.remove();
+  endFlip();
+}
+
+// ② 简约：真实翻书——克隆当前页作为“翻走的书页”绕书脊立体旋出，露出下方已平铺好的下一页
+async function flipBook(dir, mutate) {
+  const page = $('page');
+  const vp = $('page-viewport');
+  if (!page) { mutate(); return; }
+  const isNext = dir === 'next';
+  const origin = isNext ? 'left center' : 'right center';
+  const end = isNext ? -180 : 180; // 翻过 90° 后正面不可见，自然露出底页
+  const shade = isNext
+    ? 'linear-gradient(to right, rgba(0,0,0,.30), rgba(0,0,0,0) 55%)'   // 书脊在左，左侧偏暗
+    : 'linear-gradient(to left, rgba(0,0,0,.30), rgba(0,0,0,0) 55%)';    // 书脊在右，右侧偏暗
+  // 1) 克隆当前页（旧内容）作为翻走的书页
+  const leaf = document.createElement('div');
+  leaf.className = 'page flip-leaf';
+  leaf.innerHTML = page.innerHTML + '<div class="flip-shade"></div>';
+  leaf.style.zIndex = '5';
+  leaf.style.pointerEvents = 'none';
+  leaf.style.transformOrigin = origin;
+  leaf.style.setProperty('--flip-shade', shade, 'important');
+  vp.appendChild(leaf);
+  // 2) 真实 #page 渲染下一页（藏在 leaf 之下）
+  await mutate();
+  // 3) 让 leaf 绕书脊翻走，露出下方新页
+  leaf.style.setProperty('transition', 'transform .6s cubic-bezier(.45,.05,.3,1)', 'important');
+  leaf.style.transform = `rotateY(${end}deg)`;
+  await wait(640);
+  leaf.remove();
+  isFlipping = false;
+}
+
+// ③ 竹简：卷轴收起——当前页向上卷入顶部竹轴（收起），新页自竹轴向下舒卷
+async function flipBamboo(dir, mutate) {
+  const page = $('page');
+  const vp = $('page-viewport');
+  const roll = document.createElement('div');
+  roll.className = 'bamboo-roll';
+  vp.appendChild(roll);
+  // 旧页向上卷起、收进顶部竹轴
+  page.style.setProperty('transition', 'transform .5s cubic-bezier(.5,0,.3,1), opacity .4s ease', 'important');
+  page.style.transformOrigin = 'top center';
+  page.style.transform = 'scaleY(0.02)';
+  page.style.opacity = '0.9';
+  await wait(500);
+  mutate();            // 真实 #page 已渲染下一页
+  page.style.transform = 'scaleY(0.02)';
+  page.style.opacity = '0.9';
+  void page.offsetWidth;
+  // 新页自顶部竹轴向下舒卷展开
+  page.style.setProperty('transition', 'transform .55s cubic-bezier(.3,0,.2,1), opacity .45s ease', 'important');
+  page.style.transform = 'scaleY(1)';
+  page.style.opacity = '1';
+  await wait(560);
+  roll.remove();
+  endFlip();
 }
 function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -468,17 +545,17 @@ function wait(ms) {
 async function nextPage() {
   hideTranslate();
   if (pi < pages.length - 1) {
-    await flipPage('next', () => { pi++; afterPageTurn(false); });
+    await flipPage('next', async () => { pi++; await afterPageTurn(false); });
   } else if (ci < currentBook.chapters.length - 1) {
-    await flipPage('next', () => { ci++; pi = 0; paginateCurrentChapter(); afterPageTurn(true); });
+    await flipPage('next', async () => { ci++; pi = 0; paginateCurrentChapter(); await afterPageTurn(true); });
   }
 }
 async function prevPage() {
   hideTranslate();
   if (pi > 0) {
-    await flipPage('prev', () => { pi--; afterPageTurn(false); });
+    await flipPage('prev', async () => { pi--; await afterPageTurn(false); });
   } else if (ci > 0) {
-    await flipPage('prev', () => { ci--; paginateCurrentChapter(); pi = pages.length - 1; afterPageTurn(true); });
+    await flipPage('prev', async () => { ci--; paginateCurrentChapter(); pi = pages.length - 1; await afterPageTurn(true); });
   }
 }
 

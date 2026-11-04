@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三主题翻页+排版实测 · 砚白 Inkstone</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; min-height: 100vh;
+    font-family: -apple-system, "PingFang SC", "Noto Serif SC", serif;
+    background: #cfc8b8; color: #222;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .hint { font-size: 13px; color: #555; margin-bottom: 14px; font-family: sans-serif; text-align: center; line-height: 1.7; }
+
+  /* ===== 三主题变量（与 app 一致） ===== */
+  body[data-theme="ink"] {
+    --bg: #efe9dc; --fg: #202b31; --fg-soft: #5d6b72;
+    --bar-bg: #e3dcca; --bar-fg: #202b31; --accent: #2f6f7a; --border: #cec4b1;
+  }
+  body[data-theme="simple"] {
+    --bg: #f7f6f2; --fg: #1f1f1f; --fg-soft: #6a6a6a;
+    --bar-bg: #efeee9; --bar-fg: #1f1f1f; --accent: #444444; --border: #e0ded7;
+  }
+  body[data-theme="bamboo"] {
+    --bg: #e2efe1; --fg: #243a2e; --fg-soft: #5b7567;
+    --bar-bg: #d3e4d1; --bar-fg: #243a2e; --accent: #1f9e83; --border: #bcd6b6;
+  }
+  body[data-theme="ink"]::after {
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5; mix-blend-mode:multiply;
+    background-image: radial-gradient(120% 80% at 82% 0%, rgba(47,111,122,.07), transparent 60%),
+      radial-gradient(100% 70% at 8% 100%, rgba(32,43,49,.06), transparent 55%);
+  }
+  body[data-theme="bamboo"]::after {
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5; mix-blend-mode:multiply;
+    background-image: repeating-linear-gradient(90deg, rgba(40,120,90,0) 0, rgba(40,120,90,0) 25px, rgba(40,120,90,.07) 25px, rgba(40,120,90,.07) 26px);
+  }
+  body { background: var(--bg); color: var(--fg); }
+
+  /* ===== 阅读器 ===== */
+  .reader {
+    position: relative; width: 340px; height: 470px; border-radius: 10px; overflow: hidden;
+    background: var(--bg); box-shadow: 0 12px 36px rgba(40,30,20,.24); color: var(--fg);
+  }
+  .page-viewport { position: relative; width: 100%; height: 100%; overflow: hidden; perspective: 1500px; }
+  .page { position: absolute; inset: 0; padding: 40px 30px; transform-style: preserve-3d; backface-visibility: hidden; transform-origin: center center; }
+  .page h2 { font-size: 24px; font-weight: 700; letter-spacing: 2px; margin: 0 0 16px; }
+  .page p { font-size: 17px; line-height: 2.05; letter-spacing: .5px; margin: 0 0 .8em; text-indent: 2em; }
+  .seal { position:absolute; right:24px; bottom:22px; width:36px; height:36px; border:2px solid #9d2b1f; color:#9d2b1f; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; transform:rotate(-3deg); opacity:.85; }
+
+  /* ===== 各主题排版气质（与 app 一致） ===== */
+  body[data-theme="simple"] .page { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+  body[data-theme="simple"] .page h2 { border:none; color:var(--fg); font-weight:700; }
+  body[data-theme="bamboo"] .page { font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif; }
+  body[data-theme="bamboo"] .page::after {
+    content:""; position:absolute; top:0; bottom:0; right:14px; width:2px;
+    background: linear-gradient(180deg, rgba(31,158,131,0), rgba(31,158,131,.55), rgba(31,158,131,0)); pointer-events:none;
+  }
+  body[data-theme="ink"] .page h2 { border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); padding-bottom:.18em; display:inline-block; }
+
+  /* ===== 翻页动画（与 app 一致） ===== */
+  #reader #page.flipping::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:3; background: var(--flip-shade, none); }
+  #reader .ink-flip { position:absolute; inset:0; z-index:4; pointer-events:none; }
+  #reader .ink-flip svg { position:absolute; inset:0; width:100%; height:100%; }
+  #reader .ink-stroke, #reader .ink-stroke2 { fill: rgba(18,15,11,.85); filter: blur(2.5px); transform-origin:left center; opacity:0;
+    animation: ink-sweep 1.4s cubic-bezier(.22,.61,.36,1) forwards !important; }
+  #reader .ink-stroke2 { fill: rgba(18,15,11,.5); filter: blur(2px); animation-delay:.1s !important; }
+  #reader .ink-splat { fill: rgba(18,15,11,.6); opacity:0; animation: ink-splat 1.4s ease-out forwards !important; }
+  @keyframes ink-sweep { 0%{opacity:0;transform:scaleX(.015)} 12%{opacity:.95} 40%{opacity:.9;transform:scaleX(1)} 55%{opacity:0;transform:scaleX(1)} 100%{opacity:0;transform:scaleX(1)} }
+  @keyframes ink-splat { 0%{opacity:0} 30%{opacity:.55} 100%{opacity:0} }
+  #reader .bamboo-flip { position:absolute; inset:0; z-index:4; display:flex; pointer-events:none; perspective:1000px; }
+  #reader .bamboo-strip { flex:1 1 0; height:100%; transform-origin:center center;
+    background: linear-gradient(90deg,#b6d6ad,#d9ecd2 50%,#b6d6ad); border-right:1px solid rgba(40,120,90,.25); box-shadow: inset 0 0 0 1px rgba(60,140,105,.12); }
+  #reader .bamboo-roll { position:absolute; top:0; bottom:0; right:0; width:18px; z-index:6; pointer-events:none;
+    background: linear-gradient(90deg, rgba(60,140,105,0), #a9cda0 35%, #d9ecd2 50%, #a9cda0 65%, rgba(60,140,105,0));
+    border-radius:9px; box-shadow:0 0 12px rgba(40,120,90,.35), inset 0 0 0 1px rgba(60,140,105,.25); }
+  #reader .flip-leaf { position:absolute; inset:0; z-index:5; pointer-events:none; backface-visibility:hidden; transform-style:preserve-3d; }
+  #reader .flip-shade { position:absolute; inset:0; pointer-events:none; background: var(--flip-shade, none); }
+
+  /* 控件 */
+  .toolbar { margin-top: 18px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .toolbar button { font-family: inherit; font-size:15px; letter-spacing:2px; padding:10px 18px; border:none; border-radius:10px; background:#221e18; color:#f3ecdb; cursor:pointer; }
+  .toolbar button:active { transform: scale(.97); }
+  .seg { display:flex; gap:8px; margin-top:14px; }
+  .seg button { font-size:14px; padding:8px 16px; border-radius:9px; border:1px solid #999; background:#fff; cursor:pointer; }
+  .seg button.active { background:#221e18; color:#f3ecdb; border-color:#221e18; }
+  .cur { margin-top:10px; font-size:13px; color:#555; font-family:sans-serif; }
+</style>
+</head>
+<body data-theme="ink">
+  <div class="hint">三主题「翻页 + 排版」实测：切换主题→点「翻页 ›」。<br>墨水风=墨迹淡化·字浮现(已放慢) / 简约=右下角立体翻书 / 竹简=青绿竹片翻开</div>
+
+  <div class="reader" id="reader">
+    <div class="page-viewport" id="page-viewport">
+      <div class="page" id="page">
+        <h2 id="title">山居秋暝</h2>
+        <p id="body">空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。一页之内，文字从容铺展，留白处自有呼吸。</p>
+        <div class="seal">砚白</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="flip">翻页 ›</button>
+  </div>
+  <div class="seg">
+    <button data-t="ink" class="active">墨水风</button>
+    <button data-t="simple">简约</button>
+    <button data-t="bamboo">竹简</button>
+  </div>
+  <div class="cur" id="cur">当前主题：墨水风（默认）</div>
+
+<script>
+  var pages = [
+    {t:"山居秋暝", b:"空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。一页之内，文字从容铺展，留白处自有呼吸。"},
+    {t:"水墨", b:"墨分五色，浓淡干湿焦。一笔落下，山川自现。留白处云烟供养，纸上行游心与物化。翻篇之间，笔意渐淡如雾初开。"},
+    {t:"题砚白", b:"研墨于砚，白纸待书。读一本安静的书，让字句如溪水般流过心间。窗外有风，案上有墨，足矣。"}
+  ];
+  var theme = 'ink';
+  var i = 0, isFlipping = false;
+  var page = document.getElementById('page');
+  var vp = document.getElementById('page-viewport');
+  function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  function endFlip(){ page.style.transition=''; page.style.transform=''; page.style.transformOrigin=''; page.style.opacity=''; page.style.filter=''; page.classList.remove('flipping'); page.style.removeProperty('--flip-shade'); isFlipping=false; }
+
+  function flipInk(){
+    var ov=document.createElement('div'); ov.className='ink-flip';
+    ov.innerHTML='<svg viewBox="0 0 340 470" preserveAspectRatio="none"><g class="ink-splats">'+
+      '<circle class="ink-splat" cx="70" cy="210" r="3"/><circle class="ink-splat" cx="300" cy="250" r="2.4"/>'+
+      '<circle class="ink-splat" cx="265" cy="205" r="2"/><circle class="ink-splat" cx="95" cy="262" r="1.8"/></g>'+
+      '<path class="ink-stroke2" d="M70 205 C140 198 210 200 278 205 C236 214 156 214 70 205 Z"/>'+
+      '<path class="ink-stroke" d="M28 236 C92 217 176 219 256 230 C298 235 320 231 330 227 C314 250 268 256 198 251 C116 246 72 252 28 236 Z"/></svg>';
+    vp.appendChild(ov); void ov.offsetWidth;
+    page.style.setProperty('transition','opacity .4s ease, transform .4s ease, filter .4s ease','important');
+    page.style.transform='translateY(-10px) scale(.985)'; page.style.filter='blur(4px)'; page.style.opacity='0';
+    wait(600).then(function(){
+      mutate();
+      page.style.transform='translateY(10px) scale(.99)'; page.style.filter='blur(6px)'; page.style.opacity='0';
+      void page.offsetWidth;
+      page.style.setProperty('transition','opacity 1.3s ease, transform 1.3s ease, filter 1.3s ease','important');
+      page.style.transform='translateY(0) scale(1)'; page.style.filter='blur(0)'; page.style.opacity='1';
+      return wait(1350);
+    }).then(function(){ ov.remove(); endFlip(); });
+  }
+  function flipBook(dir){
+    var isNext = dir==='next';
+    var origin = isNext ? 'left center' : 'right center';
+    var end = isNext ? -180 : 180;
+    var shade = isNext ? 'linear-gradient(to right, rgba(0,0,0,.30), rgba(0,0,0,0) 55%)' : 'linear-gradient(to left, rgba(0,0,0,.30), rgba(0,0,0,0) 55%)';
+    var leaf = document.createElement('div');
+    leaf.className = 'page flip-leaf';
+    leaf.innerHTML = page.innerHTML + '<div class="flip-shade"></div>';
+    leaf.style.zIndex='5'; leaf.style.pointerEvents='none';
+    leaf.style.transformOrigin = origin;
+    leaf.style.setProperty('--flip-shade', shade, 'important');
+    vp.appendChild(leaf);
+    mutate();
+    leaf.style.setProperty('transition','transform .6s cubic-bezier(.45,.05,.3,1)','important');
+    leaf.style.transform='rotateY('+end+'deg)';
+    wait(640).then(function(){ leaf.remove(); isFlipping=false; });
+  }
+  function flipBamboo(){
+    var roll=document.createElement('div'); roll.className='bamboo-roll';
+    vp.appendChild(roll);
+    page.style.setProperty('transition','transform .5s cubic-bezier(.5,0,.3,1), opacity .5s ease','important');
+    page.style.transformOrigin='right center';
+    page.style.transform='scaleX(0.02)'; page.style.opacity='0.9';
+    wait(500).then(function(){
+      mutate();
+      page.style.transform='scaleX(0.02)'; page.style.opacity='0.9';
+      void page.offsetWidth;
+      page.style.setProperty('transition','transform .55s cubic-bezier(.3,0,.2,1), opacity .55s ease','important');
+      page.style.transform='scaleX(1)'; page.style.opacity='1';
+      return wait(560);
+    }).then(function(){ roll.remove(); endFlip(); });
+  }
+  function mutate(){
+    i=(i+1)%pages.length;
+    document.getElementById('title').textContent=pages[i].t;
+    document.getElementById('body').textContent=pages[i].b;
+  }
+  document.getElementById('flip').addEventListener('click', function(){
+    if(isFlipping) return; isFlipping=true;
+    if(theme==='ink') return flipInk();
+    if(theme==='bamboo') return flipBamboo();
+    return flipBook('next');
+  });
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click', function(){
+      theme=b.dataset.t; document.body.dataset.theme=theme;
+      document.querySelectorAll('.seg button').forEach(function(x){ x.classList.toggle('active', x===b); });
+      document.getElementById('cur').textContent='当前主题：' + b.textContent + (theme==='ink'?'（默认）':'');
+    });
+  });
+</script>
+</body>
+</html>

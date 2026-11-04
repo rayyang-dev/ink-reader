@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水墨风主题预览 v3 · 砚白 Inkstone</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: #d7d0bf;
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh;
+  }
+  .stage { position: relative; width: 340px; }
+  .page {
+    position: relative; width: 340px; height: 470px; border-radius: 10px; overflow: hidden;
+    background: radial-gradient(130% 105% at 25% 0%, #faf6ec 0%, #f0e8d6 58%, #e6dcc4 100%);
+    box-shadow: 0 12px 36px rgba(40,30,20,.24), inset 0 0 90px rgba(120,100,70,.12), inset 0 0 0 1px rgba(120,100,70,.18);
+    color: #221e18;
+  }
+  .wash {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(80px 110px at 84% 14%, rgba(22,19,15,.10), transparent 72%),
+      radial-gradient(60px 80px at 8% 82%, rgba(22,19,15,.08), transparent 72%),
+      radial-gradient(140px 90px at 56% 94%, rgba(22,19,15,.06), transparent 72%);
+  }
+  .mountains { position: absolute; left: 0; right: 0; bottom: 0; height: 170px; opacity: .55; pointer-events: none; }
+  .content {
+    position: absolute; inset: 0; padding: 42px 32px;
+    display: flex; flex-direction: column; gap: 22px;
+    transition: opacity .8s ease, transform .8s ease, filter .8s ease;
+  }
+  .content.out { opacity: 0; transform: translateY(-10px) scale(.985); filter: blur(4px);
+    transition: opacity .35s ease, transform .35s ease, filter .35s ease; }
+  .content.in  { opacity: 0; transform: translateY(10px) scale(.99); filter: blur(6px); }
+  .ptitle { font-size: 27px; font-weight: 600; letter-spacing: 5px; text-align: center; }
+  .pbody { font-size: 19px; line-height: 2.2; letter-spacing: 1.5px; }
+  .seal {
+    position: absolute; right: 26px; bottom: 24px; width: 38px; height: 38px;
+    border: 2px solid #9d2b1f; color: #9d2b1f; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; letter-spacing: 1px; opacity: .85; font-weight: 600;
+    transform: rotate(-3deg);
+  }
+  .inklayer { position: absolute; inset: 0; pointer-events: none; }
+  .stroke { fill: rgba(18,15,11,.85); filter: blur(2.5px); transform-origin: left center; opacity: 0; }
+  .stroke.go { animation: sweep 1.15s cubic-bezier(.22,.61,.36,1) forwards; }
+  .stroke2 { fill: rgba(18,15,11,.5); filter: blur(2px); transform-origin: left center; opacity: 0; }
+  .stroke2.go { animation: sweep 1.15s cubic-bezier(.22,.61,.36,1) .08s forwards; }
+  .splat { fill: rgba(18,15,11,.6); opacity: 0; }
+  .splat.go { animation: splat 1.15s ease-out forwards; }
+  @keyframes sweep {
+    0%   { opacity: 0; transform: scaleX(.015); }
+    12%  { opacity: .95; }
+    40%  { opacity: .9; transform: scaleX(1); }
+    55%  { opacity: 0; transform: scaleX(1); }
+    100% { opacity: 0; transform: scaleX(1); }
+  }
+  @keyframes splat {
+    0%   { opacity: 0; }
+    30%  { opacity: .55; }
+    100% { opacity: 0; }
+  }
+  .controls { margin-top: 18px; display: flex; gap: 12px; }
+  button {
+    font-family: inherit; font-size: 16px; letter-spacing: 2px;
+    padding: 11px 26px; border: none; border-radius: 10px;
+    background: #221e18; color: #f3ecdb; cursor: pointer;
+  }
+  button:active { transform: scale(.98); }
+  .hint { margin-top: 12px; font-size: 12.5px; color: #6f6757; letter-spacing: 1px; font-family: sans-serif; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="page">
+      <div class="wash"></div>
+      <svg class="mountains" viewBox="0 0 340 170" preserveAspectRatio="none">
+        <path d="M0 170 L0 92 Q40 52 95 86 Q150 122 200 66 Q255 26 305 78 Q330 100 340 88 L340 170 Z" fill="rgba(28,24,18,.18)"/>
+        <path d="M0 170 L0 116 Q60 90 125 110 Q185 130 245 98 Q300 70 340 106 L340 170 Z" fill="rgba(28,24,18,.11)"/>
+        <path d="M0 170 L0 138 Q70 120 140 134 Q210 148 280 124 Q315 112 340 132 L340 170 Z" fill="rgba(28,24,18,.07)"/>
+      </svg>
+      <div class="content" id="content">
+        <div class="ptitle" id="title">山居秋暝</div>
+        <div class="pbody" id="body">空山新雨后，天气晚来秋。<br>明月松间照，清泉石上流。<br>竹喧归浣女，莲动下渔舟。<br>随意春芳歇，王孙自可留。</div>
+      </div>
+      <div class="seal">砚白</div>
+      <svg class="inklayer" viewBox="0 0 340 470" preserveAspectRatio="none">
+        <g id="splatGroup">
+          <circle class="splat" cx="70" cy="210" r="3"/>
+          <circle class="splat" cx="300" cy="250" r="2.4"/>
+          <circle class="splat" cx="265" cy="205" r="2"/>
+          <circle class="splat" cx="95" cy="262" r="1.8"/>
+        </g>
+        <path class="stroke2" id="stroke2" d="M70 205 C140 198 210 200 278 205 C236 214 156 214 70 205 Z"/>
+        <path class="stroke" id="stroke" d="M28 236 C92 217 176 219 256 230 C298 235 320 231 330 227 C314 250 268 256 198 251 C116 246 72 252 28 236 Z"/>
+      </svg>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="prev">‹ 上一页</button>
+    <button id="next">翻页 ›</button>
+  </div>
+  <div class="hint">点击「翻页」预览：毛笔墨迹先淡化，随后下一页字慢慢浮现</div>
+
+<script>
+  var pages = [
+    {t:"山居秋暝", b:"空山新雨后，天气晚来秋。<br>明月松间照，清泉石上流。<br>竹喧归浣女，莲动下渔舟。<br>随意春芳歇，王孙自可留。"},
+    {t:"水墨", b:"墨分五色，浓淡干湿焦。<br>一笔落下，山川自现。<br>留白处云烟供养，<br>纸上行游心与物化。"},
+    {t:"题砚白", b:"研墨于砚，白纸待书。<br>翻篇之间笔意渐淡，<br>如烟散去如雾初开，<br>读一本安静的书。"}
+  ];
+  var i = 0, busy = false;
+  var content=document.getElementById('content'),
+      title=document.getElementById('title'),
+      body=document.getElementById('body'),
+      stroke=document.getElementById('stroke'),
+      stroke2=document.getElementById('stroke2'),
+      splats=document.querySelectorAll('.splat');
+  function flip(dir){
+    if(busy) return; busy=true;
+    var next = (i + dir + pages.length) % pages.length;
+    stroke.classList.remove('go'); void stroke.offsetWidth; stroke.classList.add('go');
+    stroke2.classList.remove('go'); void stroke2.offsetWidth; stroke2.classList.add('go');
+    splats.forEach(function(s){ s.classList.remove('go'); void s.offsetWidth; s.classList.add('go'); });
+    content.classList.add('out');
+    setTimeout(function(){
+      i = next; title.textContent = pages[i].t; body.innerHTML = pages[i].b;
+      content.classList.remove('out'); content.classList.add('in');
+      void content.offsetWidth; content.classList.remove('in');
+    }, 650);
+    setTimeout(function(){ busy=false; }, 1450);
+  }
+  document.getElementById('next').addEventListener('click', function(){ flip(1); });
+  document.getElementById('prev').addEventListener('click', function(){ flip(-1); });
+</script>
+</body>
+</html>

@@ -169,7 +169,7 @@ function lsSet(key, value) {
 }
 
 export const DEFAULT_SETTINGS = {
-  theme: 'eink',
+  theme: 'ink', // 默认主题：墨水风（毛笔墨迹淡化翻页）
   fontFamily: 'serif',
   fontSize: 20,
   lineHeight: 1.75,

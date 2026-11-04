@@ -18,59 +18,24 @@ html, body {
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-/* ---------- 主题（纸感、非纯黑） ---------- */
-/* 墨水屏：暖灰纸张 + 深灰字（绝不纯黑/纯白），模拟电子墨水屏的哑光质感 */
-body[data-theme="eink"] {
-  --bg: #eceae2; --fg: #33312c; --fg-soft: #717067;
-  --bar-bg: #e3e0d6; --bar-fg: #33312c; --accent: #4a6b86; --border: #cfccc0;
-}
-body[data-theme="light"] {
-  --bg: #f6f5ef; --fg: #2b2b2b; --fg-soft: #6b6b6b;
-  --bar-bg: #efeee6; --bar-fg: #2b2b2b; --accent: #3a6ea5; --border: #d8d6cc;
-}
-body[data-theme="sepia"] {
-  --bg: #f3e9d2; --fg: #5a4632; --fg-soft: #8a7355;
-  --bar-bg: #eadfc4; --bar-fg: #5a4632; --accent: #9c6b3f; --border: #d8c9a8;
-}
-body[data-theme="dark"] {
-  --bg: #161616; --fg: #cfcfcf; --fg-soft: #8a8a8a;
-  --bar-bg: #1f1f1f; --bar-fg: #cfcfcf; --accent: #6fa8dc; --border: #333;
-}
-body[data-theme="paper"] {
-  --bg: #ffffff; --fg: #1a1a1a; --fg-soft: #666;
-  --bar-bg: #fafafa; --bar-fg: #1a1a1a; --accent: #2563eb; --border: #e2e2e2;
-}
-/* 新增皮肤：青简（护眼绿）/ 黛蓝（静谧蓝）/ 墨韵（墨瓶·水墨）/ 素白（极简白） */
-body[data-theme="green"] {
-  --bg: #e7efe1; --fg: #2c362a; --fg-soft: #6c7a64;
-  --bar-bg: #dce7d4; --bar-fg: #2c362a; --accent: #4f7a4a; --border: #c6d4ba;
-}
-body[data-theme="blue"] {
-  --bg: #e6ecf2; --fg: #28323c; --fg-soft: #66727e;
-  --bar-bg: #dbe3ea; --bar-fg: #28323c; --accent: #3f6f9f; --border: #c4cfd9;
-}
+/* ---------- 主题（精简为 3 套，各有专属翻书动画） ---------- */
+/* 墨水风：宣纸暖底 + 墨青字；翻页为「毛笔墨迹淡化 → 新页字浮现」 */
 body[data-theme="ink"] {
   --bg: #efe9dc; --fg: #202b31; --fg-soft: #5d6b72;
   --bar-bg: #e3dcca; --bar-fg: #202b31; --accent: #2f6f7a; --border: #cec4b1;
 }
-body[data-theme="pure"] {
-  --bg: #ffffff; --fg: #111111; --fg-soft: #5a5a5a;
-  --bar-bg: #f6f6f6; --bar-fg: #111111; --accent: #222222; --border: #e4e4e4;
+/* 简约：近白极简、无装饰；翻页为干净的位移淡入淡出 */
+body[data-theme="simple"] {
+  --bg: #f7f6f2; --fg: #1f1f1f; --fg-soft: #6a6a6a;
+  --bar-bg: #efeee9; --bar-fg: #1f1f1f; --accent: #444444; --border: #e0ded7;
+}
+/* 竹简：浅青绿底 + 青绿点缀；翻页为竹片依次翻开立起露出新页 */
+body[data-theme="bamboo"] {
+  --bg: #e2efe1; --fg: #243a2e; --fg-soft: #5b7567;
+  --bar-bg: #d3e4d1; --bar-fg: #243a2e; --accent: #1f9e83; --border: #bcd6b6;
 }
 
-/* 墨水屏的极淡纸纹（哑光颗粒感），opacity 极低，不伤性能也不影响文字 */
-body[data-theme="eink"]::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.4;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>");
-}
-
-/* 墨韵（墨瓶）皮肤：在纸纹之上叠加极淡水墨晕染，模拟墨在纸上的扩散 */
+/* 墨水风：极淡水墨晕染，模拟墨在纸上的扩散 */
 body[data-theme="ink"]::after {
   content: "";
   position: fixed;
@@ -83,6 +48,47 @@ body[data-theme="ink"]::after {
     radial-gradient(120% 80% at 82% 0%, rgba(47,111,122,0.07), transparent 60%),
     radial-gradient(100% 70% at 8% 100%, rgba(32,43,49,0.06), transparent 55%),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/></svg>");
+}
+
+/* 竹简：极淡竖向竹纹，呼应竹简的编联肌理 */
+body[data-theme="bamboo"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+    background-image: repeating-linear-gradient(90deg,
+    rgba(40,120,90,0) 0, rgba(40,120,90,0) 25px,
+    rgba(40,120,90,0.07) 25px, rgba(40,120,90,0.07) 26px);
+}
+
+/* ---------- 各主题排版气质（在统一排版变量之上追加专属特色） ---------- */
+/* 简约：纯无衬线、去装饰，标题与正文同族、无分割线 */
+body[data-theme="simple"] .page,
+body[data-theme="simple"] .measure-page {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+body[data-theme="simple"] .page h1, body[data-theme="simple"] .page h2, body[data-theme="simple"] .page h3,
+body[data-theme="simple"] .measure-page h1, body[data-theme="simple"] .measure-page h2, body[data-theme="simple"] .measure-page h3 {
+  border: none; color: var(--fg); font-weight: 700;
+}
+/* 竹简：衬线 + 右侧“编绳”竖线，呼应竹简装帧 */
+body[data-theme="bamboo"] .page,
+body[data-theme="bamboo"] .measure-page {
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+}
+body[data-theme="bamboo"] .page::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 14px; width: 2px;
+  background: linear-gradient(180deg, rgba(31,158,131,0), rgba(31,158,131,0.55), rgba(31,158,131,0));
+  pointer-events: none;
+}
+/* 墨水风：标题下方一道淡墨短横，像落笔的一划 */
+body[data-theme="ink"] .page h1, body[data-theme="ink"] .page h2,
+body[data-theme="ink"] .measure-page h1, body[data-theme="ink"] .measure-page h2 {
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding-bottom: 0.18em; display: inline-block;
 }
 
 body { background: var(--bg); color: var(--fg); }
@@ -305,6 +311,40 @@ body { background: var(--bg); color: var(--fg); }
   z-index: 3;
   background: var(--flip-shade, none);
 }
+
+/* ---------- 主题专属翻书动画（keyframes 需压过全局 animation:none!important） ---------- */
+/* 墨水风：毛笔墨迹横扫后淡化（覆盖层由 flipInk 注入） */
+#reader .ink-flip { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+#reader .ink-flip svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#reader .ink-stroke,
+#reader .ink-stroke2 { fill: rgba(18,15,11,0.85); filter: blur(2.5px); transform-origin: left center; opacity: 0;
+  animation: ink-sweep 1.4s cubic-bezier(.22,.61,.36,1) forwards !important; }
+#reader .ink-stroke2 { fill: rgba(18,15,11,0.5); filter: blur(2px); animation-delay: .1s !important; }
+#reader .ink-splat { fill: rgba(18,15,11,0.6); opacity: 0;
+  animation: ink-splat 1.4s ease-out forwards !important; }
+@keyframes ink-sweep {
+  0%   { opacity: 0; transform: scaleX(.015); }
+  12%  { opacity: .95; }
+  40%  { opacity: .9; transform: scaleX(1); }
+  55%  { opacity: 0; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+@keyframes ink-splat {
+  0%   { opacity: 0; }
+  30%  { opacity: .55; }
+  100% { opacity: 0; }
+}
+
+/* 竹简：卷轴收起——顶部竹轴，旧页向上卷起收起、新页向下舒卷 */
+#reader .bamboo-roll { position:absolute; left:0; right:0; top:0; height:18px; z-index:6; pointer-events:none;
+  background: linear-gradient(180deg, rgba(60,140,105,0), #a9cda0 35%, #d9ecd2 50%, #a9cda0 65%, rgba(60,140,105,0));
+  border-radius:9px; box-shadow:0 0 12px rgba(40,120,90,.35), inset 0 0 0 1px rgba(60,140,105,.25); }
+
+/* 简约真实翻书：克隆出的“翻走的书页”及其明暗阴影（绕书脊旋出，露出底页） */
+#reader .flip-leaf { position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  backface-visibility: hidden; transform-style: preserve-3d; }
+#reader .flip-shade { position: absolute; inset: 0; pointer-events: none; background: var(--flip-shade, none); }
+
 
 /* 排版变量默认值（JS 会在 body 上覆盖这些值，.page 仅引用，不重声明） */
 :root {
