@@ -22,7 +22,7 @@ const FONT_STACK = {
 };
 
 // 主题皮肤（顺序即设置页色板顺序）；THEME_PREVIEW 仅用于色板预览的 bg/fg
-// 只保留 3 套，每套有专属翻书动画：墨水风(笔迹淡化) / 简约(位移淡入) / 竹简(竹片翻开)
+// 只保留 3 套，每套有专属翻书动画：墨水风(笔迹淡化) / 简约(整页水平滑动) / 竹简(竹片翻开)
 const THEMES = [
   { id: 'ink', name: '墨水风' },
   { id: 'simple', name: '简约' },
@@ -558,34 +558,36 @@ async function flipInk(dir, mutate) {
   endFlip();
 }
 
-// ② 简约：真实翻书——克隆当前页作为“翻走的书页”绕书脊立体旋出，露出下方已平铺好的下一页
+// ② 简约：整页水平滑动翻页（参考夸克在线阅读——当前页水平滑出，下一页从对侧滑入）
 async function flipBook(dir, mutate) {
   const page = $('page');
   const vp = $('page-viewport');
   if (!page) { mutate(); return; }
   const isNext = dir === 'next';
-  const origin = isNext ? 'left center' : 'right center';
-  const end = isNext ? -180 : 180; // 翻过 90° 后正面不可见，自然露出底页
-  const shade = isNext
-    ? 'linear-gradient(to right, rgba(0,0,0,.30), rgba(0,0,0,0) 55%)'   // 书脊在左，左侧偏暗
-    : 'linear-gradient(to left, rgba(0,0,0,.30), rgba(0,0,0,0) 55%)';    // 书脊在右，右侧偏暗
-  // 1) 克隆当前页（旧内容）作为翻走的书页
+  const exitTo = isNext ? '-100%' : '100%';    // 当前页滑出方向
+  const enterFrom = isNext ? '100%' : '-100%';  // 新页进入方向
+  // 克隆当前页（旧内容）作为覆盖层
   const leaf = document.createElement('div');
-  leaf.className = 'page flip-leaf';
-  leaf.innerHTML = page.innerHTML + '<div class="flip-shade"></div>';
-  leaf.style.zIndex = '5';
-  leaf.style.pointerEvents = 'none';
-  leaf.style.transformOrigin = origin;
-  leaf.style.setProperty('--flip-shade', shade, 'important');
+  leaf.className = 'page flip-leaf slide-leaf';
+  leaf.innerHTML = page.innerHTML;
+  leaf.style.transition = 'none';
+  leaf.style.transform = 'translateX(0)';
   vp.appendChild(leaf);
-  // 2) 真实 #page 渲染下一页（藏在 leaf 之下）
+  // 真实页先置于对侧起始位（藏于 leaf 之下）
+  page.style.setProperty('transition', 'none', 'important');
+  page.style.transform = `translateX(${enterFrom})`;
+  void page.offsetWidth;
+  // 换页：真实页渲染新内容
   await mutate();
-  // 3) 让 leaf 绕书脊翻走，露出下方新页
-  leaf.style.setProperty('transition', 'transform .6s cubic-bezier(.45,.05,.3,1)', 'important');
-  leaf.style.transform = `rotateY(${end}deg)`;
-  await wait(640);
+  // 同步滑动：旧页滑出 + 新页滑入
+  const ease = 'transform .36s cubic-bezier(.4,0,.2,1)';
+  leaf.style.setProperty('transition', ease, 'important');
+  page.style.setProperty('transition', ease, 'important');
+  leaf.style.transform = `translateX(${exitTo})`;
+  page.style.transform = 'translateX(0)';
+  await wait(380);
   leaf.remove();
-  isFlipping = false;
+  endFlip();
 }
 
 // ③ 竹简：从左书脊翻页——当前竹页绕左侧竹轴翻走，露出下方新页（竹片+编绳的竹页）

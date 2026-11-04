@@ -102,7 +102,9 @@ export async function parseEpub(file) {
     if (!raw) continue;
     let html = decode(raw);
     html = extractBody(html);
-    html = inlineImages(html, opfDir, files);
+    // 图片 src 相对的是 XHTML 自身所在目录，而非 OPF 目录（否则分目录存放图片的 EPUB 会全部裂图）
+    const chapterDir = fullKey.includes('/') ? fullKey.slice(0, fullKey.lastIndexOf('/') + 1) : '';
+    html = inlineImages(html, chapterDir, files);
     html = sanitize(html);
     const title = findTitle(html, tocMap, fullKey, chapters.length);
     chapters.push({ title, html });
@@ -237,25 +239,35 @@ function findTitle(html, tocMap, fullKey, idx) {
   return '第 ' + (idx + 1) + ' 节';
 }
 
-function inlineImages(html, opfDir, files) {
-  const imgRe = /<img\b[^>]*src="([^"]+)"[^>]*>/gi;
-  let m;
+function inlineImages(html, baseDir, files) {
+  // 同时处理 <img> 与 SVG <image>，兼容双/单引号，支持 src / href / xlink:href
+  const tagRe = /<(img|image)\b([^>]*?)\/?>/gi;
   let result = '';
   let last = 0;
-  while ((m = imgRe.exec(html))) {
-    const src = m[1];
-    let replacement = m[0];
-    if (!/^(https?:|data:)/i.test(src)) {
-      const abs = normalizePath(joinPath(opfDir, src));
-      const data = files[abs];
-      if (data) {
-        const mime = mimeFromName(src);
-        const b64 = bytesToBase64(data);
-        replacement = m[0].replace(src, 'data:' + mime + ';base64,' + b64);
+  let m;
+  while ((m = tagRe.exec(html))) {
+    const full = m[0];
+    const inner = m[2];
+    const attrRe = /\b(src|xlink:href|href)\s*=\s*("([^"]*)"|'([^']*)')/i;
+    const am = inner.match(attrRe);
+    let replacement = full;
+    if (am) {
+      const val = am[3] !== undefined ? am[3] : am[4]; // 双引号组3 / 单引号组4
+      if (val && !/^(https?:|data:)/i.test(val)) {
+        const rel = val.split('#')[0]; // 去掉可能的 fragment
+        const abs = normalizePath(joinPath(baseDir, rel));
+        const data = files[abs];
+        if (data) {
+          const mime = mimeFromName(val);
+          const b64 = bytesToBase64(data);
+          const newUrl = 'data:' + mime + ';base64,' + b64;
+          // 替换该属性值，保留原属性名与双引号
+          replacement = full.replace(am[0], am[1] + '="' + newUrl + '"');
+        }
       }
     }
     result += html.slice(last, m.index) + replacement;
-    last = m.index + m[0].length;
+    last = m.index + full.length;
   }
   result += html.slice(last);
   return result;

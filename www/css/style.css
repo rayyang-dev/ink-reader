@@ -355,6 +355,8 @@ body { background: var(--bg); color: var(--fg); }
 #reader .flip-leaf { position: absolute; inset: 0; z-index: 5; pointer-events: none;
   backface-visibility: hidden; transform-style: preserve-3d; }
 #reader .flip-shade { position: absolute; inset: 0; pointer-events: none; background: var(--flip-shade, none); }
+/* 简约整页水平滑动：滑出的页面带一道柔和右侧边影，强化“翻页”层次（不影响旋转类动画） */
+#reader .slide-leaf { box-shadow: 18px 0 34px -8px rgba(0,0,0,.18); }
 
 
 /* 排版变量默认值（JS 会在 body 上覆盖这些值，.page 仅引用，不重声明） */

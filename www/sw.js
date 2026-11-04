@@ -1,5 +1,5 @@
 // 砚白 Inkstone —— Service Worker（离线缓存应用外壳）
-const CACHE = 'inkreader-v4';
+const CACHE = 'inkreader-v6';
 const ASSETS = [
   './',
   'index.html',
