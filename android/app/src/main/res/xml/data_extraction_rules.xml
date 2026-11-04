@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API 31+ 数据提取规则：把整个应用数据目录（含 WebView 的 IndexedDB / localStorage、
+     shared_prefs、files）都纳入「云端备份」与「设备间迁移」，仅排除缓存目录。
+     这样卸载重装后，导入的书籍与阅读进度可随同一 Google 账号恢复。 -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="cache" />
+        <exclude domain="root" path="code_cache" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="cache" />
+        <exclude domain="root" path="code_cache" />
+    </device-transfer>
+</data-extraction-rules>
