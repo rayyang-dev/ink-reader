@@ -1,10 +1,10 @@
-// 砚白 — 中英互译模块自测（Node 环境，真实载入 translate.js，stub fetch 验证接线与请求构造）
+// 水杉 — 中英互译模块自测（Node 环境，真实载入 translate.js，stub fetch 验证接线与请求构造）
 import { translateText, detectLang } from '../www/js/translate.js';
 
 let pass = 0, fail = 0;
 function ok(cond, msg) { if (cond) { pass++; console.log('  ✅ ' + msg); } else { fail++; console.log('  ❌ ' + msg); } }
 
-console.log('=== 砚白 中英互译自测 ===');
+console.log('=== 水杉 中英互译自测 ===');
 
 // 1) 语言识别
 ok(detectLang('夜色像潮水') === 'zh', 'detectLang 中文 → zh');

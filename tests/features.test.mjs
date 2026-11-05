@@ -34,7 +34,7 @@ let pass = 0, fail = 0;
 function ok(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 function dk(y, m, d) { return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
 
-console.log('=== 砚白 全功能自测（设置 / 统计打卡 / 聚合 / 书架元数据）===');
+console.log('=== 水杉 全功能自测（设置 / 统计打卡 / 聚合 / 书架元数据）===');
 
 // ---------- 1. 设置默认值 ----------
 ok(DEFAULT_SETTINGS.checkinGoalMin === 10, '默认打卡阈值 = 10 分钟');
