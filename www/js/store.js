@@ -209,6 +209,7 @@ export const DEFAULT_SETTINGS = {
   aiAutoSummary: true, // 导入书籍且已配置 AI 时，自动在后台生成导读/摘要并缓存到本书
   checkinGoalMin: 10, // 阅读打卡阈值（分钟）：当日累计阅读达到该时长即自动打卡成功
   shelfGroupByCat: false, // 书架是否按分类分组展示
+  keepScreenOn: true, // 阅读时保持屏幕常亮（不锁屏）；离开阅读器自动恢复
   categories: ['文学', '历史', '政治', '小说'], // 默认书籍分类（可在设置/书架顶部增删）
 };
 

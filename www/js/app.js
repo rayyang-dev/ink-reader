@@ -193,6 +193,7 @@ function syncSettingsUI() {
   $('set-checkin').value = settings.checkinGoalMin;
   $('val-checkin').textContent = settings.checkinGoalMin + ' 分钟';
   $('set-group-cat').checked = !!settings.shelfGroupByCat;
+  $('set-keep-screen').checked = !!settings.keepScreenOn;
   renderCatManager();
   updateTranslateFieldsVisibility();
 }
@@ -734,6 +735,7 @@ async function openBook(id, jump) {
   $('reader').classList.add('hide-chrome');
   document.body.classList.add('reader-active'); // 阅读时隐藏底部导航栏
   closePanels();
+  applyKeepScreenOn(); // 进入阅读器：按设置保持屏幕常亮
   // 必须在阅读器可见后再分页：hidden 状态下 #page-viewport 高度为 0，会触发“每页 1 字”极端分支
   if (!currentPdfDoc) {
     paginateCurrentChapter();
@@ -758,6 +760,7 @@ function exitReader() {
   }
   $('reader').classList.add('hidden');
   document.body.classList.remove('reader-active');
+  applyKeepScreenOn(); // 离开阅读器：恢复系统锁屏
   currentBook = null;
   renderShelf();
 }
@@ -775,6 +778,7 @@ function showSubView(v) {
   document.querySelectorAll('#tabbar .tab').forEach((t) => t.classList.toggle('active', t.dataset.view === v));
   $('reader').classList.add('hidden'); // 从阅读器切回任意子视图时都要收起阅读层
   document.body.classList.remove('reader-active');
+  applyKeepScreenOn(); // 从阅读器切到子视图：恢复系统锁屏
 }
 // 导航到子视图：forward 时压栈；fromBack 不压栈；reset 清空历史（底部 Tab 切换用）
 function showView(v, opts = {}) {
@@ -830,6 +834,14 @@ function openPanel(id) {
 function closePanels() {
   document.querySelectorAll('.panel.open').forEach((p) => p.classList.remove('open'));
   $('panel-mask').classList.remove('open');
+}
+// 屏幕常亮联动：仅在「阅读器激活 + 设置开启」时对原生 Android 接口请求保持屏幕常亮；
+// 其余页面（书架/统计/设置/我的/法律）或关闭开关时恢复系统锁屏。
+// window.AndroidScreenOn 仅由 Android 原生 WebView 注入，桌面/PWA/iOS 下为 undefined，自动跳过。
+function applyKeepScreenOn() {
+  if (!window.AndroidScreenOn) return;
+  const on = document.body.classList.contains('reader-active') && loadSettings().keepScreenOn !== false;
+  window.AndroidScreenOn.setKeepScreenOn(on);
 }
 
 // ---------- 选中文字翻译 ----------
@@ -2044,6 +2056,10 @@ function bindEvents() {
     settings.shelfGroupByCat = e.target.checked;
     applySettings(); saveSettings(settings);
     renderShelf();
+  });
+  $('set-keep-screen').addEventListener('change', (e) => {
+    settings.keepScreenOn = e.target.checked; saveSettings(settings);
+    applyKeepScreenOn();
   });
   // 分类管理：新增 / 删除分类
   $('cat-add').addEventListener('click', () => {

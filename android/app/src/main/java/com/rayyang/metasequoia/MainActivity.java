@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.os.Bundle;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -33,6 +34,8 @@ public class MainActivity extends BridgeActivity {
         WebView wv = bridge.getWebView();
         if (wv == null) return;
         wv.setWebChromeClient(new FileChooserClient(bridge, this));
+        // 暴露原生接口给 JS：阅读器内保持屏幕常亮（FLAG_KEEP_SCREEN_ON），离开阅读器时恢复
+        wv.addJavascriptInterface(new ScreenOnBridge(this), "AndroidScreenOn");
     }
 
     // 仅重写 onShowFileChooser；其它所有回调继承 BridgeWebChromeClient，保证不破坏 Capacitor 桥接。
@@ -106,6 +109,20 @@ public class MainActivity extends BridgeActivity {
             Uri[] results = FileChooserParams.parseResult(resultCode, data);
             uploadCallback.onReceiveValue(results);
             uploadCallback = null;
+        }
+    }
+
+    // JS 可调用的原生桥：控制屏幕常亮。仅阅读器激活时由 JS 开启，离开阅读器时关闭，
+    // 避免书架 / 设置页也常亮费电。FLAG_KEEP_SCREEN_ON 由系统负责在 Activity 不可见时自动忽略。
+    private static class ScreenOnBridge {
+        private final MainActivity host;
+        ScreenOnBridge(MainActivity h) { host = h; }
+        @JavascriptInterface
+        public void setKeepScreenOn(boolean on) {
+            host.runOnUiThread(() -> {
+                if (on) host.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else host.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            });
         }
     }
 }
