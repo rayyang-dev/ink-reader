@@ -216,7 +216,9 @@ body { background: var(--bg); color: var(--fg); }
 .book-card:active .bc-cover { background: var(--fg); color: var(--bg); box-shadow: none; }
 /* 封面色块：取书名首字的拟物书封（主题色渐变 + 书脊折光 + 左侧装订带） */
 .bc-cover {
-  height: 104px;
+  /* 无封面时按列宽自适应成竖版书封比例；有封面时见 .has-cover：高度改由图片真实比例决定 */
+  aspect-ratio: 9 / 16;
+  flex: none;
   position: relative;
   display: flex; align-items: center; justify-content: center;
   font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
@@ -263,10 +265,10 @@ body { background: var(--bg); color: var(--fg); }
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   pointer-events: none;
 }
-/* 真实封面：完整显示（书封多为竖版，cover 会裁掉书名），两侧保留原青绿渐变与书脊折光 */
+/* 真实封面：容器高度随图片比例自适应，图片按宽度铺满、完整显示、不裁切不留白 */
+.bc-cover.has-cover { aspect-ratio: auto; min-height: 120px; }
 .bc-cover.has-cover img {
-  display: block; width: 100%; height: 100%;
-  object-fit: contain;
+  display: block; width: 100%; height: auto;
 }
 
 .drop-hint {
@@ -973,7 +975,7 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
   .brand-text h1 { font-size: 21px; }
   .subtitle { font-size: 12px; }
   .book-list { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; }
-  .bc-cover { height: 78px; font-size: 32px; }
+  .bc-cover { font-size: 32px; }
   .bc-title { font-size: 14px; }
   :root { --r-margin: 16px; }
   .page, .measure-page { padding: 16px; }
