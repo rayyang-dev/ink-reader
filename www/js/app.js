@@ -4,6 +4,7 @@ import {
   putBook, getBook, deleteBook, listBooksMeta, getAllBooks,
   loadProgress, saveProgress, getProgress,
   loadBookmarks, saveBookmarks,
+  loadHighlights, saveHighlights, loadFavorites, saveFavorites,
   addReadingTime, aggregateStats, loadStats, todayKey,
 } from './store.js';
 import { paginateChapter, chapterCharCount } from './paginate.js';
@@ -556,6 +557,7 @@ async function renderPage() {
   }
   $('page').innerHTML = pages[pi] || '';
   enhanceFootnoteMarkers(); // 分页若丢了 <a>，把裸 [n] 补成可点击脚注标记
+  applyHighlights();        // 还原本章已保存的正文标注（跨页/重进都在）
   $('chapter-title').textContent = currentBook.chapters[ci].title;
   updateProgress();
 }
@@ -697,7 +699,8 @@ async function prevPage() {
   }
 }
 
-async function openBook(id) {
+// jump 形如 { ci, pi }：从「我的」汇总页跳回标注/收藏所在的原文位置
+async function openBook(id, jump) {
   const book = await getBook(id);
   if (!book) { alert('书籍数据缺失，可能已被删除。'); return; }
   currentBook = book;
@@ -706,6 +709,10 @@ async function openBook(id) {
   if (prog) {
     ci = Math.min(prog.ci || 0, book.chapters.length - 1);
     pi = prog.pi || 0;
+  }
+  if (jump) {
+    ci = Math.max(0, Math.min(jump.ci || 0, book.chapters.length - 1));
+    pi = Math.max(0, jump.pi || 0);
   }
   if (book.source === 'pdf') {
     try {
@@ -721,7 +728,8 @@ async function openBook(id) {
     currentPdfDoc = null;
     computeChapterChars();
   }
-  $('shelf').classList.add('hidden');
+  // 从书架/统计/我的/设置任一视图进入都要把其他视图全部收起
+  Object.values(VIEW_ID).forEach((vid) => $(vid).classList.add('hidden'));
   $('reader').classList.remove('hidden');
   $('reader').classList.add('hide-chrome');
   document.body.classList.add('reader-active'); // 阅读时隐藏底部导航栏
@@ -729,8 +737,10 @@ async function openBook(id) {
   // 必须在阅读器可见后再分页：hidden 状态下 #page-viewport 高度为 0，会触发“每页 1 字”极端分支
   if (!currentPdfDoc) {
     paginateCurrentChapter();
+    pi = Math.max(0, Math.min(pi, pages.length - 1)); // 排版变化后页号可能越界
   }
   await renderPage();
+  if (jump) saveProgress(currentBook.id, ci, pi, computeProgressPct()); // 跳回原文后把位置记下来
   buildToc();
   buildBookmarks();
   startReadingTimer();
@@ -753,7 +763,7 @@ function exitReader() {
 }
 
 // ---------- 导航与返回栈：书架/统计/设置/法律 为子视图，阅读器为独立层 ----------
-const VIEW_ID = { shelf: 'shelf', stats: 'view-stats', settings: 'view-settings', legal: 'view-legal' };
+const VIEW_ID = { shelf: 'shelf', stats: 'view-stats', mine: 'view-mine', settings: 'view-settings', legal: 'view-legal' };
 let navStack = [];        // 视图历史（不含当前）
 let currentView = 'shelf'; // 当前视图
 let lastBackTs = 0;       // 根视图"双击退出"计时
@@ -761,8 +771,9 @@ let lastBackTs = 0;       // 根视图"双击退出"计时
 // 仅显示某个子视图（书架/统计/设置/法律），隐藏阅读器
 function showSubView(v) {
   const target = VIEW_ID[v];
-  ['shelf', 'view-stats', 'view-settings', 'view-legal'].forEach((id) => $(id).classList.toggle('hidden', id !== target));
+  ['shelf', 'view-stats', 'view-mine', 'view-settings', 'view-legal'].forEach((id) => $(id).classList.toggle('hidden', id !== target));
   document.querySelectorAll('#tabbar .tab').forEach((t) => t.classList.toggle('active', t.dataset.view === v));
+  $('reader').classList.add('hidden'); // 从阅读器切回任意子视图时都要收起阅读层
   document.body.classList.remove('reader-active');
 }
 // 导航到子视图：forward 时压栈；fromBack 不压栈；reset 清空历史（底部 Tab 切换用）
@@ -772,6 +783,7 @@ function showView(v, opts = {}) {
   currentView = v;
   showSubView(v);
   if (v === 'stats') renderStats('day');
+  if (v === 'mine') renderMine();
 }
 // 返回上一视图：阅读器单独处理（含清理）；根视图双击退出（主流 App 做法）
 function goBack() {
@@ -822,11 +834,13 @@ function closePanels() {
 
 // ---------- 选中文字翻译 ----------
 let lastSelText = '';
+let lastSelRange = null; // 选中时的 Range 快照：点工具条按钮时选区可能已被收起
 function hideTranslate() {
   $('sel-bar').classList.add('hidden');
   $('translate-pop').classList.add('hidden');
   $('ai-explain-pop').classList.add('hidden');
   $('footnote-pop').classList.add('hidden');
+  $('hl-pop').classList.add('hidden');
 }
 // ---------- 脚注 ----------
 // 实测 5 本真实 EPUB 后归纳出的三种脚注形态：
@@ -1102,6 +1116,14 @@ function initFootnoteLinks() {
   // 事件委托：#page 元素本身常驻，内部 html 每页替换，委托可一直生效
   page.addEventListener('click', async (e) => {
     const t = e.target;
+    // 点已标注的高亮 -> 打开「删除 / 收藏这句」小弹层，优先于脚注与翻页
+    const hl = t.closest && t.closest('mark.ink-hl');
+    if (hl) {
+      e.preventDefault();
+      e.stopPropagation();
+      openHighlightPop(hl.dataset.hid);
+      return;
+    }
     const marker = t.closest && t.closest('.fn-marker');
     const a = t.closest && t.closest('a[href]');
     if (!marker && !a) return;
@@ -1161,20 +1183,33 @@ function showSelBar(rect) {
   // 固定在底部居中、刚好在底栏之上，避免压住选中文字（墨水屏上压字尤其碍眼）
   bar.style.top = '';
   bar.style.bottom = '52px';
-  bar.style.left = Math.max(8, r.width / 2 - bar.offsetWidth / 2) + 'px';
+  // 必须先显示再量宽度：隐藏时 offsetWidth=0，4 个按钮会被偏到右侧
   bar.classList.remove('hidden');
+  const w = bar.offsetWidth || 0;
+  bar.style.left = Math.max(8, Math.min(r.width - w - 8, r.width / 2 - w / 2)) + 'px';
 }
-function onSelectEnd() {
+function onSelectEnd(e) {
+  // 点工具条/标注弹层按钮的那次 mouseup 也会冒泡到 document；跳过它，
+  // 否则刚收起的工具条会因为选区还在而被立刻重新弹出来。
+  const tgt = e && e.target;
+  if (tgt && tgt.closest && (tgt.closest('#sel-bar') || tgt.closest('#hl-pop'))) return;
   const pop = $('translate-pop');
   const epop = $('ai-explain-pop');
   const fpop = $('footnote-pop');
-  if (!pop.classList.contains('hidden') || !epop.classList.contains('hidden') || !fpop.classList.contains('hidden')) return; // 弹层开着时不抢焦点
-  if ($('reader').classList.contains('hidden')) { hideTranslate(); return; }
-  const t = (window.getSelection() && window.getSelection().toString().trim()) || '';
-  if (!t) { hideTranslate(); lastSelText = ''; return; }
+  const hpop = $('hl-pop');
+  if (!pop.classList.contains('hidden') || !epop.classList.contains('hidden') ||
+      !fpop.classList.contains('hidden') || !hpop.classList.contains('hidden')) return; // 弹层开着时不抢焦点
+  if ($('reader').classList.contains('hidden')) { hideTranslate(); lastSelText = ''; lastSelRange = null; return; }
+  const sel = window.getSelection();
+  const t = (sel && sel.toString().trim()) || '';
+  if (!t) { hideTranslate(); lastSelText = ''; lastSelRange = null; return; }
   lastSelText = t;
+  try { lastSelRange = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null; } catch (e) { lastSelRange = null; }
   const rect = selectionRect();
   if (!rect) { hideTranslate(); return; }
+  // 选中的一段若已标注，工具条直接变成「取消标注」
+  const marked = currentBook && hasEntry(loadHighlights(), currentBook.id, normText(t));
+  $('sel-highlight').textContent = marked ? '取消标注' : '标注';
   showSelBar(rect);
 }
 async function doTranslate(text) {
@@ -1205,10 +1240,15 @@ async function doTranslate(text) {
   }
 }
 function initTranslateSelection() {
-  document.addEventListener('mouseup', () => setTimeout(onSelectEnd, 0));
-  document.addEventListener('touchend', () => setTimeout(onSelectEnd, 0));
+  document.addEventListener('mouseup', (e) => setTimeout(() => onSelectEnd(e), 0));
+  document.addEventListener('touchend', (e) => setTimeout(() => onSelectEnd(e), 0));
   $('sel-translate').addEventListener('click', () => { if (lastSelText) doTranslate(lastSelText); });
   $('sel-ai').addEventListener('click', () => { if (lastSelText) doExplain(lastSelText); });
+  $('sel-highlight').addEventListener('click', addHighlightFromSelection);
+  $('sel-favorite').addEventListener('click', addFavoriteFromSelection);
+  $('hl-close').addEventListener('click', hideTranslate);
+  $('hl-del').addEventListener('click', deleteActiveHighlight);
+  $('hl-fav').addEventListener('click', favoriteActiveHighlight);
   $('translate-close').addEventListener('click', hideTranslate);
   $('ai-explain-close').addEventListener('click', hideTranslate);
   $('translate-copy').addEventListener('click', () => {
@@ -1308,6 +1348,261 @@ function addBookmark() {
   m[currentBook.id].push({ ci, pi, label, at: Date.now() });
   saveBookmarks(m);
   buildBookmarks();
+}
+
+// ---------- 正文标注 / 收藏语句 ----------
+// 标注 = 选中文字在正文里持久高亮；收藏 = 把选中句子存进书单，不改动正文。
+// 两者都按 bookId 存 localStorage，记录 ci/pi 用于「我的」页跳回原文；
+// 还原高亮时不依赖页号（改字号后分页会变），只按章节 + 文本在当前页里找匹配。
+function normText(s) {
+  return String(s || '').replace(/[\s\u200b\ufeff]+/g, ' ').trim();
+}
+function newEntryId(prefix) {
+  return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+}
+function entriesOf(map, bookId) {
+  return (map && map[bookId]) || [];
+}
+function hasEntry(map, bookId, text) {
+  return entriesOf(map, bookId).some((it) => it.text === text);
+}
+function pushEntry(map, bookId, entry) {
+  if (!map[bookId]) map[bookId] = [];
+  map[bookId].push(entry);
+  return map;
+}
+function removeEntry(map, bookId, id) {
+  map[bookId] = entriesOf(map, bookId).filter((x) => x.id !== id);
+  if (!map[bookId].length) delete map[bookId];
+  return map;
+}
+
+// 把当前选区按文本节点切段包进 <mark>，避免跨元素选区 surroundContents 抛错
+function markSelection(range, id) {
+  const root = $('page');
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const parts = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    try { if (!range.intersectsNode(n)) continue; } catch (e) { continue; }
+    let start = 0, end = n.nodeValue.length;
+    if (n === range.startContainer) start = range.startOffset;
+    if (n === range.endContainer) end = range.endOffset;
+    if (end > start) parts.push({ n, start, end });
+  }
+  let ok = false;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    try {
+      const r = document.createRange();
+      r.setStart(p.n, p.start);
+      r.setEnd(p.n, p.end);
+      const m = document.createElement('mark');
+      m.className = 'ink-hl';
+      m.dataset.hid = id;
+      r.surroundContents(m);
+      ok = true;
+    } catch (e) {}
+  }
+  return ok;
+}
+// 建立「归一化页面文本 -> 原始 (文本节点, 偏移)」映射，用来在任意分页结果里定位一段文字
+function buildPageTextIndex(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      if (!n.nodeValue) return NodeFilter.FILTER_REJECT;
+      let p = n.parentElement;
+      while (p && p !== root) {
+        if (/^(MARK|SCRIPT|STYLE|SELECT|TEXTAREA)$/.test(p.tagName || '')) return NodeFilter.FILTER_REJECT;
+        p = p.parentElement;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  let norm = '', pendingSpace = false;
+  const chars = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    const s = n.nodeValue;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (/[\s\u200b\ufeff]/.test(c)) {
+        if (norm && !pendingSpace) { norm += ' '; chars.push({ node: n, offset: i }); }
+        pendingSpace = true;
+      } else {
+        norm += c;
+        chars.push({ node: n, offset: i });
+        pendingSpace = false;
+      }
+    }
+  }
+  return { norm, chars };
+}
+// 在当前页里找到 text 并高亮（已有的 <mark> 会被跳过，故同页重复文本可逐条叠加）
+function wrapMatch(id, text) {
+  const q = normText(text);
+  if (!q) return false;
+  const { norm, chars } = buildPageTextIndex($('page'));
+  const idx = norm.indexOf(q);
+  if (idx < 0) return false;
+  const slice = chars.slice(idx, idx + q.length);
+  if (slice.length !== q.length) return false;
+  const groups = [];
+  slice.forEach((c) => {
+    const last = groups[groups.length - 1];
+    if (last && last.node === c.node) {
+      last.start = Math.min(last.start, c.offset);
+      last.end = Math.max(last.end, c.offset + 1);
+    } else {
+      groups.push({ node: c.node, start: c.offset, end: c.offset + 1 });
+    }
+  });
+  let ok = false;
+  for (let i = groups.length - 1; i >= 0; i--) {
+    const g = groups[i];
+    try {
+      const r = document.createRange();
+      r.setStart(g.node, g.start);
+      r.setEnd(g.node, g.end);
+      const m = document.createElement('mark');
+      m.className = 'ink-hl';
+      m.dataset.hid = id;
+      r.surroundContents(m);
+      ok = true;
+    } catch (e) {}
+  }
+  return ok;
+}
+function applyHighlights() {
+  if (!currentBook || currentBook.source === 'pdf') return;
+  const list = entriesOf(loadHighlights(), currentBook.id).filter((h) => h.ci === ci);
+  // 同一页的优先还原，其次同章其它页（改字号导致页号漂移时仍能命中）
+  list.sort((a, b) => (a.pi === pi ? 0 : 1) - (b.pi === pi ? 0 : 1));
+  list.forEach((h) => wrapMatch(h.id, h.text));
+}
+function addHighlightFromSelection() {
+  if (!currentBook || !lastSelText) return;
+  const text = normText(lastSelText);
+  if (!text) return;
+  const map = loadHighlights();
+  // 再选同一段文字 = 取消标注（切换语义，避免唯一入口只能加不能删）
+  const exist = entriesOf(map, currentBook.id).find((h) => h.text === text);
+  if (exist) {
+    saveHighlights(removeEntry(map, currentBook.id, exist.id));
+    hideTranslate();
+    renderPage();
+    showToast('已取消标注');
+    return;
+  }
+  const id = newEntryId('hl');
+  saveHighlights(pushEntry(map, currentBook.id, { id, text, ci, pi, at: Date.now() }));
+  const marked = lastSelRange ? markSelection(lastSelRange, id) : false;
+  if (!marked) wrapMatch(id, text);
+  hideTranslate();
+  showToast('已标注');
+}
+function addFavoriteFromSelection() {
+  if (!currentBook || !lastSelText) return;
+  const text = normText(lastSelText);
+  if (!text) return;
+  const map = loadFavorites();
+  if (hasEntry(map, currentBook.id, text)) { hideTranslate(); showToast('这句已收藏过'); return; }
+  saveFavorites(pushEntry(map, currentBook.id, {
+    id: newEntryId('fv'), text, ci, pi, at: Date.now(),
+  }));
+  hideTranslate();
+  showToast('已收藏');
+}
+let activeHlId = null;
+function openHighlightPop(hid) {
+  if (!currentBook) return;
+  const h = entriesOf(loadHighlights(), currentBook.id).find((x) => x.id === hid);
+  if (!h) return;
+  activeHlId = hid;
+  $('hl-text').textContent = h.text;
+  hideTranslate();
+  $('hl-pop').classList.remove('hidden');
+}
+function deleteActiveHighlight() {
+  if (!currentBook || !activeHlId) return;
+  saveHighlights(removeEntry(loadHighlights(), currentBook.id, activeHlId));
+  activeHlId = null;
+  hideTranslate();
+  renderPage();
+  showToast('已删除标注');
+}
+function favoriteActiveHighlight() {
+  if (!currentBook || !activeHlId) return;
+  const h = entriesOf(loadHighlights(), currentBook.id).find((x) => x.id === activeHlId);
+  if (!h) return;
+  const map = loadFavorites();
+  if (!hasEntry(map, currentBook.id, h.text)) {
+    saveFavorites(pushEntry(map, currentBook.id, {
+      id: newEntryId('fv'), text: h.text, ci: h.ci, pi: h.pi, at: Date.now(),
+    }));
+  }
+  hideTranslate();
+  showToast('已收藏这句');
+}
+
+// ---------- 「我的」：按书汇总标注与收藏 ----------
+let mineFilter = 'all';
+async function renderMine() {
+  const metas = await listBooksMeta();
+  const titleOf = {};
+  metas.forEach((m) => { titleOf[m.id] = m.title; });
+  const groups = new Map();
+  const collect = (type, map) => {
+    Object.keys(map || {}).forEach((bid) => entriesOf(map, bid).forEach((it) => {
+      if (!groups.has(bid)) groups.set(bid, []);
+      groups.get(bid).push({ ...it, type, bookId: bid, title: titleOf[bid] || '（已删除的书）' });
+    }));
+  };
+  collect('highlight', loadHighlights());
+  collect('favorite', loadFavorites());
+  let books = Array.from(groups.entries()).map(([bid, items]) => [bid,
+    mineFilter === 'all' ? items : items.filter((i) => i.type === mineFilter)]);
+  books = books.filter(([, items]) => items.length);
+  const latest = (items) => items.reduce((m, i) => Math.max(m, i.at || 0), 0);
+  books.sort((a, b) => latest(b[1]) - latest(a[1]));
+  const el = $('mine-list');
+  el.innerHTML = '';
+  const total = books.reduce((s, [, items]) => s + items.length, 0);
+  $('mine-summary').textContent = total ? `共 ${books.length} 本书 · ${total} 条记录` : '';
+  if (!books.length) {
+    el.innerHTML = '<p class="empty-tip">还没有标注或收藏。<br/>阅读时选中一段文字，点「标注」或「收藏」就能记下来。</p>';
+    return;
+  }
+  books.forEach(([bid, items]) => {
+    items.sort((a, b) => (b.at || 0) - (a.at || 0));
+    const box = document.createElement('div');
+    box.className = 'mine-book';
+    const hn = items.filter((i) => i.type === 'highlight').length;
+    const fn = items.length - hn;
+    const head = document.createElement('div');
+    head.className = 'mine-book-head';
+    head.innerHTML = `<span class="mine-book-title">${escapeHtml(items[0].title)}</span>` +
+      `<span class="mine-book-count">${hn ? hn + ' 条标注' : ''}${hn && fn ? ' · ' : ''}${fn ? fn + ' 条收藏' : ''}</span>`;
+    box.appendChild(head);
+    items.forEach((it) => {
+      const d = document.createElement('div');
+      d.className = 'mine-item ' + (it.type === 'highlight' ? 'mine-hl' : 'mine-fav');
+      const date = new Date(it.at || Date.now()).toLocaleDateString('zh-CN');
+      d.innerHTML = `<div class="mine-text"><span class="mine-badge">${it.type === 'highlight' ? '标注' : '收藏'}</span>${escapeHtml(it.text)}</div>` +
+        `<div class="mine-meta">第${(it.ci || 0) + 1}章 · 第${(it.pi || 0) + 1}页 · ${date}</div>` +
+        `<div class="mine-actions"><button data-act="jump">跳到原文</button><button data-act="del">删除</button></div>`;
+      d.querySelector('[data-act="jump"]').addEventListener('click', () => {
+        openBook(bid, { ci: it.ci || 0, pi: it.pi || 0 });
+      });
+      d.querySelector('[data-act="del"]').addEventListener('click', () => {
+        if (it.type === 'highlight') saveHighlights(removeEntry(loadHighlights(), bid, it.id));
+        else saveFavorites(removeEntry(loadFavorites(), bid, it.id));
+        renderMine();
+      });
+      box.appendChild(d);
+    });
+    el.appendChild(box);
+  });
 }
 
 // ---------- 阅读计时 / 打卡 ----------
@@ -1684,8 +1979,10 @@ function bindEvents() {
   $('page-viewport').addEventListener('click', (e) => {
     const sel = window.getSelection && window.getSelection();
     if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 选中文字时不翻页
-    // 脚注弹层开启时，点击翻页区先关闭它（脚注链接自身已 stopPropagation，不会走到这里）
-    if (!$('footnote-pop').classList.contains('hidden')) { hideTranslate(); return; }
+    // 脚注/标注弹层开启时，点击翻页区先关闭它（链接与高亮自身已 stopPropagation，不会走到这里）
+    if (!$('footnote-pop').classList.contains('hidden') || !$('hl-pop').classList.contains('hidden')) {
+      hideTranslate(); return;
+    }
     if (document.querySelector('.panel.open')) { closePanels(); return; }
     if (!$('reader').classList.contains('hide-chrome')) {
       $('reader').classList.add('hide-chrome'); // 显示栏时，点击任意处收起
@@ -1772,6 +2069,7 @@ function bindEvents() {
   document.querySelectorAll('[data-nav]').forEach((b) => {
     b.addEventListener('click', () => {
       if (b.dataset.back) { goBack(); return; }
+      if (b.dataset.reset) { showView(b.dataset.nav, { reset: true }); return; }
       showView(b.dataset.nav);
       if (b.dataset.legal) openLegal(b.dataset.legal);
     });
@@ -1779,6 +2077,14 @@ function bindEvents() {
   // 法律声明页内的三个标签切换
   document.querySelectorAll('.legal-tab').forEach((b) => {
     b.addEventListener('click', () => openLegal(b.dataset.legal));
+  });
+  // 「我的」页：全部 / 标注 / 收藏 筛选
+  document.querySelectorAll('.mine-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      mineFilter = b.dataset.mineTab || 'all';
+      document.querySelectorAll('.mine-tab').forEach((x) => x.classList.toggle('active', x === b));
+      renderMine();
+    });
   });
 
   // Android 硬件返回键：交给返回栈处理（不直退应用）。仅在原生外壳生效，Web 端无效（不影响）。

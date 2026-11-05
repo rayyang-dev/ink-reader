@@ -158,8 +158,10 @@ export async function getAllBooks() {
 const K_SETTINGS = 'inkreader:settings';
 const K_PROGRESS = 'inkreader:progress';
 const K_BOOKMARKS = 'inkreader:bookmarks';
+const K_HIGHLIGHTS = 'inkreader:highlights'; // 正文标注：{ bookId: [{ id, text, ci, pi, at }] }
+const K_FAVORITES = 'inkreader:favorites';  // 收藏语句：{ bookId: [{ id, text, ci, pi, at }] }
 
-const memoryKV = { settings: null, progress: {}, bookmarks: {} };
+const memoryKV = { settings: null, progress: {}, bookmarks: {}, highlights: {}, favorites: {} };
 
 function lsGet(key, fallback) {
   try {
@@ -169,6 +171,8 @@ function lsGet(key, fallback) {
     if (key === K_SETTINGS) return memoryKV.settings || fallback;
     if (key === K_PROGRESS) return memoryKV.progress || fallback;
     if (key === K_BOOKMARKS) return memoryKV.bookmarks || fallback;
+    if (key === K_HIGHLIGHTS) return memoryKV.highlights || fallback;
+    if (key === K_FAVORITES) return memoryKV.favorites || fallback;
     return fallback;
   }
 }
@@ -179,6 +183,8 @@ function lsSet(key, value) {
     if (key === K_SETTINGS) memoryKV.settings = value;
     else if (key === K_PROGRESS) memoryKV.progress = value;
     else if (key === K_BOOKMARKS) memoryKV.bookmarks = value;
+    else if (key === K_HIGHLIGHTS) memoryKV.highlights = value;
+    else if (key === K_FAVORITES) memoryKV.favorites = value;
   }
 }
 
@@ -231,6 +237,22 @@ export function loadBookmarks() {
 }
 export function saveBookmarks(map) {
   lsSet(K_BOOKMARKS, map);
+}
+
+// ---------- 正文标注 / 收藏语句 ----------
+// 两者结构一致：{ [bookId]: [{ id, text, ci, pi, at }] }
+// text 存归一化后的选中文字（空白折叠），ci/pi 用于跳回原文与在本页还原高亮。
+export function loadHighlights() {
+  return lsGet(K_HIGHLIGHTS, {});
+}
+export function saveHighlights(map) {
+  lsSet(K_HIGHLIGHTS, map);
+}
+export function loadFavorites() {
+  return lsGet(K_FAVORITES, {});
+}
+export function saveFavorites(map) {
+  lsSet(K_FAVORITES, map);
 }
 
 // ---------- 阅读统计 / 打卡 ----------

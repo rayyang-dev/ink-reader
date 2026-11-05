@@ -105,6 +105,8 @@ await page.evaluateOnNewDocument(() => {
     s.pageFlip = false;
     localStorage.setItem('inkreader:settings', JSON.stringify(s));
   } catch (e) {}
+  // 测试环境禁用「SW 接管后自动刷新」，避免 reload 竞态导致 detached frame
+  try { sessionStorage.setItem('sw-reloaded', '1'); } catch (e) {}
 });
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 page.on('console', (m) => {
@@ -183,7 +185,8 @@ try {
     };
   }));
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await wait(600);
+  await page.waitForFunction(() => window.__INK_INIT_DONE === true, { timeout: 15000 });
+  await wait(200);
   await page.evaluate(() => document.querySelector('.book-card').click());
   await page.waitForFunction(() => {
     const r = document.querySelector('#reader');

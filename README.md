@@ -38,11 +38,12 @@
 - 📖 **分页式阅读**：非滚动，按屏幕真实分页，接近纸质书体验
 - ⚡ **墨水屏友好**：默认翻页零动画、即时整屏刷新（Regal）规避残影；可在设置开启「翻书页动画」，手机端像翻书一样过渡
 - 🎨 **8 款主题皮肤**：墨白 / 宣纸 / 茶色 / 青简 / 黛蓝 / 墨韵 / 素白 / 夜墨，设置页一点即换，其中「墨韵」为墨瓶·水墨晕染风格
-- 🧭 **底部导航 + 独立页面**：书架 / 统计 / 设置 三页通过底部导航栏切换；**阅读统计与设置均为独立页面**（不再内嵌在阅读器里），设置页内置皮肤切换
+- 🧭 **底部导航 + 独立页面**：书架 / 统计 / 我的 / 设置 四页通过底部导航栏切换；**阅读统计与设置均为独立页面**（不再内嵌在阅读器里），设置页内置皮肤切换
+- ✍️ **标注与收藏语句**：阅读时选中任意文字即可「标注」（正文持久高亮，翻页/重进自动还原）或「收藏」（只存句子不改正文）；点高亮可删除或顺手收藏，底部「我的」按书分组汇总，支持类型筛选、跳回原文、删除，设置页也有入口
 - 🔤 **中英互译**：划词即译，可用 DeepSeek / 通义 / 本地 Ollama 等任意 OpenAI 兼容模型（详见下方「AI 引擎配置」），密钥仅存本地，默认关闭
 - 🤖 **AI 助手（本地优先）**：同一套 Key/模型即可解锁「全书/本章导读、选中即问、书中问答、人物脉络笔记、智能书架标签、段落双语对照」；结果缓存到本机，默认关闭、按需联网
 - 📱 **响应式 + PWA**：同一套界面适配手机 / 平板；可「添加到主屏幕」离线使用
-- 💾 **本地存储**：书籍内容存 IndexedDB，设置 / 进度 / 书签 / 统计存 localStorage（均带内存兜底）
+- 💾 **本地存储**：书籍内容存 IndexedDB，设置 / 进度 / 书签 / 统计 / 标注 / 收藏存 localStorage（均带内存兜底）
 - 📊 **阅读统计与打卡**：按日 / 周 / 月统计读了哪些书、各花多少时间；当日累计达「打卡阈值」（默认 10 分钟，可设置）自动打卡
 - 🗂 **书架自动整理**：开启「书架按 AI 类型分组」后，书架空按 AI 标签归类，配合顶部标签筛选条快速找书
 - 🤖 **Android 原生壳**：基于 Capacitor，包名 `com.rayyang.metasequoia`（应用名「水杉阅读」，英文名 **Metasequoia**）
@@ -64,7 +65,7 @@
 
 此外：
 
-- **选中即问**：阅读时选中任意文字，浮出「译 / AI 解释」工具条——「AI 解释」会结合全书上下文解释术语、典故或难句。
+- **选中即问**：阅读时选中任意文字，浮出「译 / AI 解释 / 标注 / 收藏」工具条——「AI 解释」会结合全书上下文解释术语、典故或难句。
 - **智能书架**：在书架可一键「AI 归类」，自动给书打主题/题材/难度/情绪标签；书架顶部出现标签筛选条，按标签快速找书。
 - **自动导读**（可选开关）：导入新书且已配置 AI 时，后台静默生成导读并缓存，打开即看。
 
@@ -112,7 +113,7 @@
 
 ### 🔤 中英互译（DeepSeek 等通用模型）
 ![设置·AI 引擎](docs/screenshots/04b-settings-ai.png)
-划词即译，可用 DeepSeek / 通义 / 本地 Ollama 等任意 OpenAI 兼容模型（详见下方「AI 引擎配置」）。选中文字还可用「AI 解释」结合全书上下文讲解术语或难句。在 **设置 → AI 引擎** 选「AI 大模型」并填 Key 即可（例如 DeepSeek：Base `https://api.deepseek.com/v1`、Model `deepseek-chat`）。
+划词即译，可用 DeepSeek / 通义 / 本地 Ollama 等任意 OpenAI 兼容模型（详见下方「AI 引擎配置」）。选中文字还可用「AI 解释」结合全书上下文讲解术语或难句，或用「标注 / 收藏」把句子记进「我的」。在 **设置 → AI 引擎** 选「AI 大模型」并填 Key 即可（例如 DeepSeek：Base `https://api.deepseek.com/v1`、Model `deepseek-chat`）。
 
 ### 📭 空书架引导
 ![空书架](docs/screenshots/01-shelf-empty.png)
@@ -195,7 +196,7 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 
 ## 🌐 AI 引擎配置（翻译 / 摘要 / 问答 / 标签 / 笔记 共用）
 
-默认关闭，且不影响离线阅读。在阅读页**选中一段文字**会浮出「译 / AI 解释」工具条；点「AI」按钮可打开 AI 助手面板。
+默认关闭，且不影响离线阅读。在阅读页**选中一段文字**会浮出「译 / AI 解释 / 标注 / 收藏」工具条；点「AI」按钮可打开 AI 助手面板。
 
 设置项（存于 localStorage，不上传）：
 
@@ -219,7 +220,7 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 - 前端：原生 ES Modules（无打包构建）、IndexedDB、Service Worker（PWA）
 - 解析：[fflate](https://github.com/101arrowz/fflate)（EPUB / DOCX）、[pdf.js v4](https://github.com/mozilla/pdf.js)（PDF）、自研 MOBI 解析器、原生 DOMParser（FB2 / HTML）
 - 原生壳：Capacitor 8（Android / HarmonyOS NEXT；`android/` 为安卓工程，`harmony/` 为鸿蒙原生 .hap 工程）
-- 测试：Node 原生 `node:test` + Playwright；含「设置 / 统计打卡 / 日周月聚合 / 书架元数据」全功能自测、真实浏览器冒烟（断言新控件已接入 DOM 并全页面截图）、解析 / 翻译 / 端到端，以及 FB2 / HTML / DOCX 三种新格式导入的端到端校验，全部通过
+- 测试：`puppeteer-core` + 系统 Chrome 的真实浏览器端到端（`npm test`，含冒烟 / 跨文件脚注 / 标注收藏三套回归），另附 `test/regen-screenshots.mjs` 生成界面截图
 
 ---
 
@@ -228,12 +229,12 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 ```
 metasequoia-reader/
 ├── www/                            # Web 应用（PWA 入口，也是 Capacitor 的 webDir）
-│   ├── index.html                  # 单页结构：书架 / 阅读器 / 统计页 / 设置页 / 底部导航栏（阅读器内仍保留目录/书签/AI 侧滑面板）
+│   ├── index.html                  # 单页结构：书架 / 阅读器 / 统计页 / 我的页 / 设置页 / 底部导航栏（阅读器内仍保留目录/书签/AI 侧滑面板）
 │   ├── css/style.css               # 墨水屏主题与全部样式（8 款可切换皮肤 / 翻书页 3D 动画 / Regal 整屏反色 / 纸感设计令牌）
 │   ├── books/sample.js             # 内置示例书《阅读者手记》（无版权风险，用于演示）
 │   └── js/
 │       ├── app.js                  # 主控：书架渲染 / 分页翻页（含翻书页动画）/ 底部导航与独立页面切换 / 阅读计时打卡 / 面板与设置接线
-│       ├── store.js                # 存储层：IndexedDB 存书籍 + localStorage 存设置/进度/书签/统计（均带内存兜底）
+│       ├── store.js                # 存储层：IndexedDB 存书籍 + localStorage 存设置/进度/书签/统计/标注/收藏（均带内存兜底）
 │       ├── paginate.js             # 按屏幕真实尺寸的分页引擎（非滚动）
 │       ├── translate.js            # 中英互译（mock / DeepL / Google / 通用 LLM 可插拔）
 │       ├── llm.js                  # OpenAI 兼容统一客户端（翻译 / 摘要 / 问答 / 笔记 共用）
@@ -244,26 +245,26 @@ metasequoia-reader/
 ├── android/                        # Capacitor 生成的 Android 原生工程（包名 com.rayyang.metasequoia）
 ├── harmony/                        # Capacitor 鸿蒙（HarmonyOS NEXT）原生工程，产出 .hap（rawfile/www 由 cap sync 生成，未进仓库）
 ├── docs/                           # 界面示意图 mockup.svg + 真实截图 screenshots/
-├── tests/                          # Node 自测（features / 解析 / 翻译 / 端到端）+ Playwright 冒烟与截图
+├── test/                           # puppeteer-core 真实浏览器回归（smoke / footnote / marks）+ 截图重生成脚本
 ├── capacitor.config.json           # Capacitor 配置（appId / appName / webDir）
 └── README.md
 ```
 
-> 架构要点：前端是**零构建的原生 ES Modules**（无 webpack/vite），直接在浏览器与 Capacitor WebView 中运行；所有第三方能力（EPUB/PDF/MOBI 解析、LLM 调用）都收敛在 `js/` 下、以纯函数 + 可控的 `fetch` 实现，便于在 Node 环境下做单元测试。存储与联网均遵循「本地优先、零追踪」：书籍在 IndexedDB、设置/进度/书签/统计在 localStorage，AI 仅在用户主动触发且已填 Key 时才向用户指定的接口发请求。
+> 架构要点：前端是**零构建的原生 ES Modules**（无 webpack/vite），直接在浏览器与 Capacitor WebView 中运行；所有第三方能力（EPUB/PDF/MOBI 解析、LLM 调用）都收敛在 `js/` 下、以纯函数 + 可控的 `fetch` 实现，便于在 Node 环境下做单元测试。存储与联网均遵循「本地优先、零追踪」：书籍在 IndexedDB、设置/进度/书签/统计/标注/收藏在 localStorage，AI 仅在用户主动触发且已填 Key 时才向用户指定的接口发请求。
 
 ---
 
 ## ✅ 测试
 
 ```bash
-node tests/features.test.mjs        # 全功能自测：设置 / 阅读统计打卡 / 日周月聚合 / 书架元数据（29 断言全过）
-node test/regen-screenshots.mjs  # 真实浏览器（puppeteer-core）冒烟 + 全页面截图（空书架/平铺/分组/阅读器/设置/AI面板/统计），输出至 docs/screenshots/
-node --test tests/                  # EPUB / PDF / MOBI 管线、翻译后端路由、端到端流程
+npm test                        # 打包闸门：冒烟 + 跨文件脚注 + 标注收藏，三套真实浏览器回归
+npm run test:smoke              # 书架按钮 / EPUB 导入 / 图片内联 / 分页 / 控制条
+npm run test:footnote           # 内存合成 EPUB：同文件/跨文件/图片式脚注、旧书兼容（6 用例）
+npm run test:marks              # 标注高亮持久化、收藏、我的页汇总/筛选/跳转/删除（11 用例）
+node test/regen-screenshots.mjs # 真实浏览器全页面截图，输出至 docs/screenshots/
 ```
 
-`features.test.mjs` 覆盖本次新增功能的纯逻辑层（打卡阈值触发、日/周/月聚合边界、设置读写、书架 AI 标签元数据）；
-`test/regen-screenshots.mjs` 用 puppeteer-core + 系统 Chrome 真实加载应用，对空书架 / 平铺书架 / 分组书架 / 阅读器 / 独立设置页（皮肤切换 / AI 引擎 / 翻页动画开关）/ 独立统计页（日 / 周切换）/ AI 面板各截一张图，输出至 `docs/screenshots/`。
-其余用例覆盖 EPUB 管线、PDF 管线、MOBI 模块（含中文 124 章 / 英文 33 章解析）、翻译后端路由，以及「MOBI 解析 → 取章 → 翻译」的端到端流程，全部通过。
+三套回归都用 `puppeteer-core` + 系统 Chrome 加载真实 `www/`，通过 DOM 事件与 IndexedDB/localStorage 断言端到端行为；`footnote.mjs` 与 `marks.mjs` 会在内存中用 fflate 合成 EPUB，不依赖本机书籍。`test/regen-screenshots.mjs` 对空书架 / 平铺书架 / 分组书架 / 阅读器 / 独立设置页 / 独立统计页 / AI 面板各截一张图。
 
 ---
 

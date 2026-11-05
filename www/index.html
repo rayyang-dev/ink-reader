@@ -83,6 +83,22 @@
       </div>
     </section>
 
+    <!-- ============ 我的（标注 / 收藏语句汇总） ============ -->
+    <section id="view-mine" class="screen view hidden">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="shelf" data-reset="1">‹ 书架</button>
+        <div class="page-head-title">我的标注与收藏</div>
+        <span class="page-head-spacer"></span>
+      </header>
+      <div class="mine-tabs ai-tabs">
+        <button class="mine-tab active" data-mine-tab="all">全部</button>
+        <button class="mine-tab" data-mine-tab="highlight">标注</button>
+        <button class="mine-tab" data-mine-tab="favorite">收藏</button>
+      </div>
+      <div id="mine-summary" class="mine-summary"></div>
+      <div id="mine-list" class="mine-body"></div>
+    </section>
+
     <!-- ============ 个人设置（独立页面） ============ -->
     <section id="view-settings" class="screen view hidden">
       <header class="page-head">
@@ -91,6 +107,13 @@
         <span class="page-head-spacer"></span>
       </header>
       <div class="settings-body">
+        <div class="settings-group">
+          <div class="group-title">我的内容</div>
+          <div class="group-body">
+            <button class="btn btn-block" data-nav="mine">我的标注与收藏 →</button>
+            <div class="hint" style="margin:8px 0 0">按书籍汇总阅读时标注的段落与收藏的语句，可跳回原文。</div>
+          </div>
+        </div>
         <div class="settings-group">
           <div class="group-title">外观 · 皮肤</div>
           <div class="group-body">
@@ -337,10 +360,12 @@
       <!-- Regal 整屏清残影闪光 -->
       <div id="refresh-flash" class="refresh-flash"></div>
 
-      <!-- 选中文字：工具条（译 / AI 解释） -->
+      <!-- 选中文字：工具条（译 / AI 解释 / 标注 / 收藏） -->
       <div id="sel-bar" class="sel-bar hidden">
         <button id="sel-translate">译</button>
         <button id="sel-ai">AI 解释</button>
+        <button id="sel-highlight" class="sel-act">标注</button>
+        <button id="sel-favorite" class="sel-act">收藏</button>
       </div>
       <div id="translate-pop" class="hidden">
         <div class="tp-row">
@@ -368,6 +393,18 @@
         </div>
         <div id="footnote-text"></div>
       </div>
+      <!-- 标注弹层：点击正文里的高亮标注时，可删除标注或顺手收藏这句 -->
+      <div id="hl-pop" class="hidden">
+        <div class="tp-row">
+          <span class="tp-dir">标注</span>
+          <button id="hl-close">关闭</button>
+        </div>
+        <div id="hl-text"></div>
+        <div class="tp-actions">
+          <button id="hl-fav">收藏这句</button>
+          <button id="hl-del">删除标注</button>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 底部导航栏 ============ -->
@@ -379,6 +416,10 @@
       <button class="tab" data-view="stats">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12 20V9M16 20v-9"/></svg>
         <span>统计</span>
+      </button>
+      <button class="tab" data-view="mine">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-6-4-6 4v-17z"/></svg>
+        <span>我的</span>
       </button>
       <button class="tab" data-view="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M19.2 4.8l-1.8 1.8M6.6 17.4l-1.8 1.8"/></svg>
