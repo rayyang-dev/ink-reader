@@ -107,7 +107,9 @@ export async function parseEpub(file) {
     html = inlineImages(html, chapterDir, files);
     html = sanitize(html);
     const title = findTitle(html, tocMap, fullKey, chapters.length);
-    chapters.push({ title, html });
+    // src 记录该章节在 EPUB 包内的原始路径：跨文件脚注 href（如 ../Text/chapter91.xhtml#m28）
+    // 必须靠它把「注释所在章节」精确定位出来，否则 m28 / w28 这类 id 在全书会重复十几次。
+    chapters.push({ title, html, src: fullKey });
   }
   if (!chapters.length) throw new Error('未在 EPUB 中找到可读章节（spine 指向的内容文件可能缺失或被加密）');
 
