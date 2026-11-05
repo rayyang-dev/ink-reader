@@ -80,6 +80,7 @@ function metaOf(b) {
     source: b.source,
     addedAt: b.addedAt,
     chaptersCount: (b.chapters || []).length,
+    category: b.category || '其他',
     aiTags: (b.ai && Array.isArray(b.ai.tags) && b.ai.tags) || [],
   };
 }
@@ -140,6 +141,18 @@ export async function listBooksMeta() {
   }
 }
 
+// 返回全部书籍完整对象（用于分类回填等需要改写的场景）
+export async function getAllBooks() {
+  if (!dbAvailable) return Array.from(memBooks.values());
+  try {
+    const db = await openDB();
+    return await idbGetAll(db);
+  } catch (e) {
+    dbAvailable = false;
+    return Array.from(memBooks.values());
+  }
+}
+
 // ---------- localStorage 部分（设置 / 进度 / 书签）；不可用时降级内存 ----------
 const K_SETTINGS = 'inkreader:settings';
 const K_PROGRESS = 'inkreader:progress';
@@ -188,7 +201,8 @@ export const DEFAULT_SETTINGS = {
   translateDir: 'auto',
   aiAutoSummary: true, // 导入书籍且已配置 AI 时，自动在后台生成导读/摘要并缓存到本书
   checkinGoalMin: 10, // 阅读打卡阈值（分钟）：当日累计阅读达到该时长即自动打卡成功
-  shelfGroupByTag: false, // 书架是否按 AI 标签（类型）分组
+  shelfGroupByCat: false, // 书架是否按分类分组展示
+  categories: ['文学', '历史', '政治', '小说'], // 默认书籍分类（可在设置/书架顶部增删）
 };
 
 export function loadSettings() {

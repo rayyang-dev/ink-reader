@@ -202,10 +202,25 @@
               <input type="range" id="set-checkin" min="1" max="60" step="1" />
             </div>
             <div class="field">
-              <label class="switch"><input type="checkbox" id="set-group-tag" /> 书架按 AI 类型分组</label>
+              <label class="switch"><input type="checkbox" id="set-group-cat" /> 书架按分类分组</label>
             </div>
           </div>
-          <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按 AI 类型分组」后，书架空按书的首个 AI 标签归类，未分类的归入「未分类」。</p>
+          <p class="hint group-hint">当日累计阅读达到「打卡阈值」即自动打卡（在阅读页停留即计时，切到后台或打开面板时暂停）。开启「书架按分类分组」后，书架按分类分区块展示。</p>
+        </div>
+
+        <div class="settings-group">
+          <div class="group-title">书籍分类</div>
+          <div class="group-body">
+            <div class="field">
+              <label>分类管理（点 × 删除；删除后该分类下的书归入「其他」）</label>
+              <div id="cat-list" class="cat-list"></div>
+              <div class="cat-add-row">
+                <input type="text" id="cat-input" placeholder="新增分类名" maxlength="10" />
+                <button class="btn" id="cat-add" type="button">+ 新增</button>
+              </div>
+            </div>
+          </div>
+          <p class="hint group-hint">导入书籍时会按书名关键词自动归入对应分类（文学 / 历史 / 政治 / 小说等），未命中关键词的归入「其他」。可在书架顶部分类条点「+ 分类」快速新增，也可在此处增删；卡片上的下拉框可手动调整单本书的分类。</p>
         </div>
 
         <div class="settings-group">

@@ -1,7 +1,7 @@
 // 水杉 Metasequoia —— 主控逻辑
 import {
   loadSettings, saveSettings, DEFAULT_SETTINGS,
-  putBook, getBook, deleteBook, listBooksMeta,
+  putBook, getBook, deleteBook, listBooksMeta, getAllBooks,
   loadProgress, saveProgress, getProgress,
   loadBookmarks, saveBookmarks,
   addReadingTime, aggregateStats, loadStats, todayKey,
@@ -11,7 +11,7 @@ import { parseTxt, parseEpub, parsePdf, parseMobi, parseFb2, parseHtml, parseDoc
 import { openPdf, renderPdfPage } from './pdfview.js';
 import { translateText } from './translate.js';
 import {
-  aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiTags, aiBilingual, pageParagraphs, renderMarkdown,
+  aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiBilingual, pageParagraphs, renderMarkdown,
 } from './ai.js';
 
 // Capacitor 仅存在于原生外壳（Android WebView），由桥接层把插件挂在全局 window.Capacitor.Plugins 上。
@@ -191,7 +191,8 @@ function syncSettingsUI() {
   $('set-ai-auto').checked = !!settings.aiAutoSummary;
   $('set-checkin').value = settings.checkinGoalMin;
   $('val-checkin').textContent = settings.checkinGoalMin + ' 分钟';
-  $('set-group-tag').checked = !!settings.shelfGroupByTag;
+  $('set-group-cat').checked = !!settings.shelfGroupByCat;
+  renderCatManager();
   updateTranslateFieldsVisibility();
 }
 
@@ -235,7 +236,23 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-let activeTagFilter = null;
+let activeCategory = null; // null = 全部
+
+// 书名关键词粗分类：按优先级（政治 > 历史 > 文学 > 小说）匹配，未命中归「其他」
+const CATEGORY_RULES = [
+  { cat: '政治', keys: ['政治', '政府', '国家', '制度', '革命', '政策', '民主', '政党', '领袖', '外交', '马克思', '毛泽东', '邓小平', '共和国', '宪政', '资本论', '体制', '政权', '改革', '法治', '列强'] },
+  { cat: '历史', keys: ['历史', '史', '朝代', '古代', '近代', '民国', '史记', '通鉴', '文明', '王朝', '帝国', '战国', '秦汉', '唐', '宋', '明', '清', '战争', '传记', '考古', '丝路', '罗马', '希腊', '欧洲', '中国史'] },
+  { cat: '文学', keys: ['文学', '诗', '散文', '文集', '随笔', '诗歌', '戏剧', '诗词', '名著', '经典', '杂文', '童话', '寓言', '小说集', '散文集', '诗集'] },
+  { cat: '小说', keys: ['小说', '长篇', '短篇', '言情', '武侠', '科幻', '悬疑', '推理', '玄幻', '奇幻', '都市', '穿越', '末世', '修仙', '网游', '侦探', '校园', '职场', '军事', '谍战', '宫斗', '种田', '甜宠', '网文', '灵异', '架空'] },
+];
+function classifyTitle(title) {
+  const t = (title || '').toLowerCase();
+  if (!t) return '其他';
+  for (const r of CATEGORY_RULES) {
+    if (r.keys.some((k) => t.includes(k.toLowerCase()))) return r.cat;
+  }
+  return '其他';
+}
 
 async function renderShelf() {
   const list = await listBooksMeta();
@@ -256,68 +273,113 @@ async function renderShelf() {
   empty.classList.add('hidden');
   hint.classList.remove('hidden');
 
-  // 顶部标签筛选条：汇总所有书的 AI 标签
-  const tagCount = new Map();
-  list.forEach((b) => (b.aiTags || []).forEach((t) => tagCount.set(t, (tagCount.get(t) || 0) + 1)));
-  if (tagCount.size) {
-    filter.classList.remove('hidden');
-    filter.innerHTML = '';
-    const allBtn = document.createElement('button');
-    allBtn.className = 'tag-chip' + (activeTagFilter === null ? ' active' : '');
-    allBtn.textContent = '全部';
-    allBtn.addEventListener('click', () => { activeTagFilter = null; renderShelf(); });
-    filter.appendChild(allBtn);
-    Array.from(tagCount.keys()).forEach((t) => {
-      const c = document.createElement('button');
-      c.className = 'tag-chip' + (activeTagFilter === t ? ' active' : '');
-      c.textContent = t;
-      c.addEventListener('click', () => { activeTagFilter = t; renderShelf(); });
-      filter.appendChild(c);
-    });
-  } else {
-    filter.classList.add('hidden');
-    filter.innerHTML = '';
+  // 顶部分类条：全部 + 用户分类 + 其他（当存在不在列表中的分类时出现）
+  const cats = settings.categories || [];
+  const inList = (c) => cats.includes(c);
+  const hasOther = list.some((b) => !inList(b.category));
+  filter.classList.remove('hidden');
+  filter.innerHTML = '';
+  filter.appendChild(mkTagChip('全部', activeCategory === null, () => { activeCategory = null; renderShelf(); }));
+  cats.forEach((c) => {
+    filter.appendChild(mkTagChip(c, activeCategory === c, () => { activeCategory = c; renderShelf(); }));
+  });
+  if (hasOther) {
+    filter.appendChild(mkTagChip('其他', activeCategory === '其他', () => { activeCategory = '其他'; renderShelf(); }));
   }
+  filter.appendChild(mkAddCatChip());
 
-  const shown = activeTagFilter ? list.filter((b) => (b.aiTags || []).includes(activeTagFilter)) : list;
+  const shown = activeCategory === null
+    ? list
+    : activeCategory === '其他'
+      ? list.filter((b) => !inList(b.category))
+      : list.filter((b) => (b.category || '其他') === activeCategory);
 
-  const grouped = settings.shelfGroupByTag && tagCount.size > 0;
+  const grouped = !!settings.shelfGroupByCat;
   el.classList.toggle('grouped', grouped);
   if (!grouped) {
     if (!shown.length) {
-      el.innerHTML = '<p class="empty-tip">该标签下暂无书籍。</p>';
+      el.innerHTML = '<p class="empty-tip">该分类下暂无书籍。</p>';
       return;
     }
     shown.forEach((b) => el.appendChild(renderBookCard(b)));
     return;
   }
 
-  // 按类型（AI 标签）分组书架
+  // 按分类分组书架
   const groups = new Map();
-  const uncategorized = [];
   shown.forEach((b) => {
-    if (b.aiTags && b.aiTags.length) {
-      const t = b.aiTags[0];
-      if (activeTagFilter && t !== activeTagFilter) return;
-      if (!groups.has(t)) groups.set(t, []);
-      groups.get(t).push(b);
-    } else {
-      if (activeTagFilter) return;
-      uncategorized.push(b);
-    }
+    const c = b.category || '其他';
+    if (!groups.has(c)) groups.set(c, []);
+    groups.get(c).push(b);
   });
-  if (!groups.size && !uncategorized.length && !shown.length) {
-    el.innerHTML = '<p class="empty-tip">该标签下暂无书籍。</p>';
+  const order = cats.concat(['其他']);
+  const ordered = Array.from(groups.keys()).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  if (!ordered.length) {
+    el.innerHTML = '<p class="empty-tip">该分类下暂无书籍。</p>';
     return;
   }
-  Array.from(groups.keys()).sort().forEach((t) => {
-    el.appendChild(mkGroupHeader(t));
-    el.appendChild(mkBookRow(groups.get(t)));
+  ordered.forEach((c) => {
+    el.appendChild(mkGroupHeader(c));
+    el.appendChild(mkBookRow(groups.get(c)));
   });
-  if (!activeTagFilter && uncategorized.length) {
-    el.appendChild(mkGroupHeader('未分类'));
-    el.appendChild(mkBookRow(uncategorized));
+}
+
+// 分类条上的「+ 分类」按钮：弹窗新增分类
+function mkAddCatChip() {
+  const c = document.createElement('button');
+  c.className = 'tag-chip add-cat';
+  c.textContent = '+ 分类';
+  c.addEventListener('click', () => {
+    const name = prompt('新建分类名称：');
+    if (!name) return;
+    addCategory(name.trim());
+  });
+  return c;
+}
+function addCategory(name) {
+  const v = (name || '').trim();
+  if (!v) return;
+  const cats = settings.categories || [];
+  if (cats.includes(v)) { alert('分类「' + v + '」已存在'); return; }
+  settings.categories = cats.concat(v);
+  saveSettings(settings);
+  renderCatManager();
+  renderShelf();
+}
+async function removeCategory(cat) {
+  if (!confirm('删除分类「' + cat + '」？该分类下的书将归入「其他」。')) return;
+  settings.categories = (settings.categories || []).filter((x) => x !== cat);
+  saveSettings(settings);
+  if (activeCategory === cat) activeCategory = null;
+  renderCatManager();
+  renderShelf();
+}
+// 设置页「分类管理」列表渲染
+function renderCatManager() {
+  const wrap = $('cat-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  (settings.categories || []).forEach((c) => {
+    const item = document.createElement('span');
+    item.className = 'cat-item';
+    item.innerHTML = '<span class="cat-name">' + escapeHtml(c) + '</span>' +
+      '<button class="cat-del" type="button" data-cat="' + escapeHtml(c) + '" aria-label="删除">×</button>';
+    wrap.appendChild(item);
+  });
+}
+
+// 给历史书籍（缺分类）按书名自动回填分类
+async function ensureCategories() {
+  const books = await getAllBooks();
+  let changed = false;
+  for (const b of books) {
+    if (!b.category) {
+      b.category = classifyTitle(b.title);
+      await putBook(b);
+      changed = true;
+    }
   }
+  if (changed) await renderShelf();
 }
 
 function mkTagChip(text, active, onClick) {
@@ -343,61 +405,44 @@ function renderBookCard(b) {
   const card = document.createElement('div');
   card.className = 'book-card';
   const coverChar = (b.title || '?').trim().charAt(0) || '?';
-  const tagsHtml = (b.aiTags && b.aiTags.length)
-    ? `<div class="bc-tags">${b.aiTags.map((t) => `<span class="tag-chip sm">${escapeHtml(t)}</span>`).join('')}</div>`
-    : '';
-  const aiLabel = (b.aiTags && b.aiTags.length) ? '重做归类' : 'AI 归类';
+  const cat = b.category || '其他';
+  const opts = (settings.categories || []).concat(['其他'])
+    .map((c) => `<option value="${escapeHtml(c)}"${c === cat ? ' selected' : ''}>${escapeHtml(c)}</option>`)
+    .join('');
   card.innerHTML =
     `<div class="bc-cover">${escapeHtml(coverChar)}</div>` +
     `<div class="bc-body">` +
       `<div class="bc-title">${escapeHtml(b.title)}</div>` +
       `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
-      tagsHtml +
-      `<button class="bc-ai-btn" data-ai="${b.id}">${aiLabel}</button>` +
+      `<select class="bc-cat" data-cat="${b.id}">${opts}</select>` +
     `</div>` +
     `<div class="bc-del" data-del="${b.id}">删除</div>`;
   card.addEventListener('click', () => openBook(b.id));
-  card.querySelector('.bc-del').addEventListener('click', async (e) => {
+  const del = card.querySelector('.bc-del');
+  del.addEventListener('click', async (e) => {
     e.stopPropagation();
     if (confirm(`确定从本机删除《${b.title}》？此操作不可恢复。`)) {
       await deleteBook(b.id);
-      activeTagFilter = null;
+      if (activeCategory === cat && !(settings.categories || []).includes(cat)) activeCategory = null;
       renderShelf();
     }
   });
-  const aiEl = card.querySelector('.bc-ai-btn');
-  aiEl.addEventListener('click', async (e) => {
+  const sel = card.querySelector('.bc-cat');
+  sel.addEventListener('click', (e) => e.stopPropagation());
+  sel.addEventListener('change', async (e) => {
     e.stopPropagation();
-    await categorizeBook(b.id, aiEl);
+    const book = await getBook(b.id);
+    if (!book) return;
+    book.category = sel.value;
+    await putBook(book);
+    renderShelf();
   });
   return card;
 }
 
-async function categorizeBook(id, el) {
-  if (!aiConfigured()) {
-    alert('请先在「阅读设置 → AI 引擎」选择「AI 大模型」并填写 API Key，才能自动归类。');
-    return;
-  }
-  const original = el.textContent;
-  el.textContent = '归类中…';
-  el.classList.add('busy');
-  try {
-    const book = await getBook(id);
-    if (!book) throw new Error('书籍数据缺失');
-    const tags = await aiTags(book);
-    book.ai = Object.assign({}, book.ai, { tags });
-    await putBook(book);
-    activeTagFilter = null;
-    await renderShelf();
-  } catch (e) {
-    alert('AI 归类失败：' + e.message);
-    el.textContent = original;
-    el.classList.remove('busy');
-  }
-}
-
 async function importBook(book) {
   try {
+    if (!book.category) book.category = classifyTitle(book.title);
     await putBook(book);
     await renderShelf();
     maybeAutoSummary(book);
@@ -1351,10 +1396,23 @@ function bindEvents() {
   });
   // 打卡阈值 + 书架分组
   bindRange('set-checkin', 'checkinGoalMin', (v) => parseInt(v, 10), (v) => ($('val-checkin').textContent = v + ' 分钟'));
-  $('set-group-tag').addEventListener('change', (e) => {
-    settings.shelfGroupByTag = e.target.checked;
+  $('set-group-cat').addEventListener('change', (e) => {
+    settings.shelfGroupByCat = e.target.checked;
     applySettings(); saveSettings(settings);
     renderShelf();
+  });
+  // 分类管理：新增 / 删除分类
+  $('cat-add').addEventListener('click', () => {
+    const inp = $('cat-input');
+    addCategory(inp.value);
+    inp.value = '';
+  });
+  $('cat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { addCategory(e.target.value); e.target.value = ''; }
+  });
+  $('cat-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cat-del');
+    if (btn) removeCategory(btn.dataset.cat);
   });
   initTranslateSelection();
 
@@ -1415,6 +1473,7 @@ function init() {
   applySettings();
   bindEvents();
   renderShelf();
+  ensureCategories();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
     // 新 Service Worker 接管后自动刷新一次，避免升级后一直显示旧缓存页面
