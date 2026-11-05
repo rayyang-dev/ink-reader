@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#2b2b2b"/>
-  <text x="256" y="360" font-size="300" text-anchor="middle" fill="#f6f5ef" font-family="Georgia, 'Songti SC', serif">墨</text>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f6f7a"/>
+      <stop offset="1" stop-color="#173d44"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="110" fill="url(#g)"/>
+  <path d="M256 110 L300 190 L276 190 L328 280 L300 280 L360 372 L152 372 L212 280 L184 280 L236 190 L212 190 Z" fill="#ffffff"/>
+  <rect x="240" y="372" width="32" height="46" fill="#ffffff"/>
 </svg>
