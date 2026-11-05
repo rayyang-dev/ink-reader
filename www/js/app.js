@@ -529,6 +529,7 @@ async function renderPage() {
     return;
   }
   $('page').innerHTML = pages[pi] || '';
+  enhanceFootnoteMarkers(); // 分页若丢了 <a>，把裸 [n] 补成可点击脚注标记
   $('chapter-title').textContent = currentBook.chapters[ci].title;
   updateProgress();
 }
@@ -802,104 +803,171 @@ function hideTranslate() {
   $('footnote-pop').classList.add('hidden');
 }
 // ---------- 脚注 ----------
+// 真实 EPUB 常见结构（如《雍正帝》）：
+//   正文引用 <a href="#m1" id="w1">[1]</a>
+//   章末注释 <p class="footnote"><a href="#w1" id="m1">[1]</a> 注释文本……</p>
+// 注意：目标 id 往往只落在「编号 <a>」上，注释文本在它的父容器里；
+// 早期实现只取该 <a> 的 textContent（就是 "[1]"），导致弹层看似空白。
+// 另外分页器 splitBlock 对超长段落按纯文本重建会丢掉 <a>，故对裸 [n] 标记做可点击包装兜底。
+
 // 在任意 DOM 子树内按 id 精确查找（避免 querySelector 对特殊字符 id 的转义问题）
 function findByIdIn(root, id) {
-  if (!root) return null;
+  if (!root || !id) return null;
   const nodes = root.querySelectorAll('[id]');
   for (const n of nodes) if (n.id === id) return n;
   return null;
 }
-// 判断锚点本身是否为脚注引用（依据 class / epub:type / 标记文本）
-function isFootnoteAnchor(a) {
-  if (!a || a.tagName !== 'A') return false;
-  const href = a.getAttribute('href') || '';
-  if (!href.startsWith('#')) return false;
-  const cls = (a.className || '').toLowerCase();
-  if (/(foot|note|ref|endnote|annotation)/.test(cls)) return true;
-  const et = a.getAttribute('epub:type') || '';
-  if (/noteref|footnote-ref|annotation-ref/i.test(et)) return true;
-  const t = (a.textContent || '').trim();
-  if (/^\[\d+\]$/.test(t) || /^\d+$/.test(t) || /^[\*\u2020\u2021\u2022]+$/.test(t)) return true;
-  return false;
-}
-// 判断目标元素是否为脚注内容（依据 id / class / epub:type）
-function isFootnoteTarget(el) {
-  if (!el) return false;
-  const id = (el.id || '').toLowerCase();
-  if (/(fn|foot|note|endnote|annotation)/.test(id)) return true;
-  const cls = (el.className || '').toLowerCase();
-  if (/(foot|note|endnote|annotation)/.test(cls)) return true;
-  const et = el.getAttribute('epub:type') || '';
-  if (/footnote|endnote|note|annotation|backlink/i.test(et)) return true;
-  return false;
-}
-// 解析脚注文本：优先当前页 DOM，否则遍历整本书所有章节的 html
-function resolveFootnote(href) {
-  const id = (href || '').replace(/^#/, '').trim();
-  if (!id) return null;
-  let el = findByIdIn(document, id); // 覆盖当前页已渲染的内容
-  if (!el && currentBook && currentBook.chapters) {
+// 在当前页 DOM 与全书章节 HTML 中按 id 找目标（脚注常落在别的页/章）
+function findFootnoteTargetById(id) {
+  let el = findByIdIn(document, id);
+  if (el) return el;
+  if (currentBook && currentBook.chapters) {
     const tmp = document.createElement('div');
     for (const ch of currentBook.chapters) {
       tmp.innerHTML = ch.html || '';
-      const found = findByIdIn(tmp, id);
-      if (found) { el = found; break; }
+      const f = findByIdIn(tmp, id);
+      if (f) return f;
     }
   }
+  return null;
+}
+function isFootnoteBlock(el) {
+  if (!el) return false;
+  const cls = (el.className || '').toLowerCase();
+  const et = el.getAttribute ? (el.getAttribute('epub:type') || '') : '';
+  return /(foot|note|endnote|annotation)/.test(cls) || /footnote|endnote|rearnote/.test(et);
+}
+// 从「编号 <a>」向上找脚注容器：优先语义 class / epub:type，其次文本明显更长且不过长的块级父元素
+function findFootnoteContainer(el) {
+  const own = ((el && el.textContent) || '').trim();
+  let cur = el && el.parentElement;
+  for (let i = 0; i < 4 && cur; i++, cur = cur.parentElement) {
+    if (isFootnoteBlock(cur)) return cur;
+    const raw = (cur.textContent || '').trim();
+    if (/^(p|li|div|aside|section|td)$/i.test(cur.tagName || '') &&
+        raw.length > own.length + 6 && raw.length < 300) return cur;
+  }
+  return el;
+}
+// 取容器全文：剔除「返回正文」回链与开头编号，避免把 "[1]" 当成注释内容
+function cleanFootnoteText(el) {
   if (!el) return null;
-  // 克隆后剔除“返回正文”的回链（↩ / ↑ / back 等），避免把回链文本算进注释
   const clone = el.cloneNode(true);
   clone.querySelectorAll('a').forEach((a) => {
     const t = (a.textContent || '').trim();
-    if (/^[\u2190\u21a9\u21e7\u2191]+$/.test(t) ||
-        /back/i.test(a.className) ||
-        /return/i.test(a.getAttribute('title') || '')) {
-      a.remove();
-    }
+    const symbolic = /^[\u2190\u21a9\u21e7\u2191\u21e0\u2934\u21b5*\u2020\u2021]+$/.test(t);
+    const backCls = /back|return/i.test(a.className || '');
+    const leadingNum = /^\[?\d{1,3}\]?$/.test(t) && a === clone.firstElementChild;
+    if (symbolic || backCls || leadingNum) a.remove();
   });
-  const text = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  let text = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  text = text.replace(/^\[\d{1,3}\]\s*/, '').replace(/^\d{1,3}[.、]\s*/, '').trim();
   return text || null;
+}
+function isJustMarker(text, marker) {
+  const t = (text || '').trim();
+  if (!t) return true;
+  if (t.length <= 6 && /^\[?\d{1,3}\]?[.、]?$/.test(t)) return true;
+  if (marker && t === marker.trim()) return true;
+  return false;
+}
+// 兜底：按标记编号在章节 HTML 的脚注容器里找注释（应对分页丢 <a> / 目标只有编号）
+function resolveFootnoteByNumber(num) {
+  if (!num || !currentBook || !currentBook.chapters) return null;
+  const chs = currentBook.chapters;
+  const order = [chs[ci]].concat(chs.filter((_, i) => i !== ci)).filter(Boolean);
+  const re = new RegExp('^\\[?' + num + '\\]?(?:[.、\\s]|$)');
+  for (const ch of order) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = ch.html || '';
+    const cands = Array.from(tmp.querySelectorAll('p, li, div, aside, section')).filter(isFootnoteBlock);
+    for (const el of cands) {
+      if (cands.some((o) => o !== el && el.contains(o))) continue; // 只取叶子脚注块
+      if (!re.test((el.textContent || '').trim())) continue;
+      const text = cleanFootnoteText(el);
+      if (text) return text;
+    }
+  }
+  return null;
+}
+// 主解析：先 href→id（并上溯脚注容器），若只拿到编号则按编号兜底
+function resolveFootnote(href, markerText) {
+  const id = (href || '').replace(/^#/, '').trim();
+  const num = ((markerText || '').trim().match(/^\[?(\d{1,3})\]?$/) || [])[1] || null;
+  if (id) {
+    const el = findFootnoteTargetById(id);
+    if (el) {
+      const text = cleanFootnoteText(findFootnoteContainer(el));
+      if (!isJustMarker(text, markerText)) return text;
+    }
+  }
+  if (num) return resolveFootnoteByNumber(num);
+  return null;
 }
 function showFootnote(text, ref) {
   $('footnote-ref').textContent = ref ? '· ' + ref : '';
   $('footnote-text').textContent = text;
   $('footnote-pop').classList.remove('hidden');
 }
+// 把分页后残留的裸 [n] 标记包成可点击元素（splitBlock 会丢 <a>）
+function enhanceFootnoteMarkers() {
+  const page = $('page');
+  if (!page) return;
+  const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      if (!n.nodeValue || !/\[\d{1,3}\]/.test(n.nodeValue)) return NodeFilter.FILTER_REJECT;
+      let p = n.parentElement;
+      while (p && p !== page) {
+        if (/^(A|BUTTON|SELECT|TEXTAREA)$/.test(p.tagName) || p.classList.contains('fn-marker')) return NodeFilter.FILTER_REJECT;
+        p = p.parentElement;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => {
+    const frag = document.createDocumentFragment();
+    const src = n.nodeValue;
+    let last = 0, m;
+    const re = /\[(\d{1,3})\]/g;
+    while ((m = re.exec(src))) {
+      frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+      const s = document.createElement('span');
+      s.className = 'fn-marker';
+      s.dataset.fn = m[1];
+      s.textContent = m[0];
+      frag.appendChild(s);
+      last = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(src.slice(last)));
+    n.parentNode.replaceChild(frag, n);
+  });
+}
 function initFootnoteLinks() {
   const page = $('page');
   if (!page) return;
   // 事件委托：#page 元素本身常驻，内部 html 每页替换，委托可一直生效
   page.addEventListener('click', (e) => {
-    const a = e.target.closest && e.target.closest('a');
-    if (!a) return;
-    const href = a.getAttribute('href') || '';
-    if (!href.startsWith('#')) return; // 外链 / 相对链接不拦截
+    const t = e.target;
+    const marker = t.closest && t.closest('.fn-marker');
+    const a = t.closest && t.closest('a');
+    if (!marker && !(a && (a.getAttribute('href') || '').startsWith('#'))) return;
+    const label = ((marker || a).textContent || '').trim();
+    // 只拦截「脚注型」锚点，避免误伤目录/章节跳转等普通内部链接
+    const looksLikeMarker = /^\[?\d{1,3}\]?$/.test(label) || /^[\*\u2020\u2021\u2022]+$/.test(label);
+    const semantic = a && (
+      /(foot|note|ref|endnote|annotation)/.test((a.className || '').toLowerCase()) ||
+      /noteref|footnote/i.test(a.getAttribute('epub:type') || '')
+    );
+    if (!marker && !looksLikeMarker && !semantic) return;
     e.preventDefault();
     e.stopPropagation(); // 阻止冒泡到 page-viewport 触发翻页/收起栏
     hideTranslate();
-    const anchorFoot = isFootnoteAnchor(a);
-    const targetEl = (() => {
-      const id = href.slice(1);
-      let el = findByIdIn(document, id);
-      if (!el && currentBook && currentBook.chapters) {
-        const tmp = document.createElement('div');
-        for (const ch of currentBook.chapters) {
-          tmp.innerHTML = ch.html || '';
-          const f = findByIdIn(tmp, id);
-          if (f) { el = f; break; }
-        }
-      }
-      return el;
-    })();
-    const targetFoot = isFootnoteTarget(targetEl);
-    const text = targetEl ? resolveFootnote(href) : null;
-    if (text && (anchorFoot || targetFoot)) {
-      showFootnote(text, (a.textContent || '').trim());
-    } else if (targetEl && text) {
-      // 非脚注的内部锚点（如目录跳转）：分页阅读下无法滚动定位，直接以弹层展示目标文本，避免点击无反应
-      showFootnote(text, (a.textContent || '').trim());
-    }
-    // 其余情况：静默吞掉点击，避免“点击后空白/翻页”
+    const el = marker || a;
+    const text = resolveFootnote(marker ? '' : a.getAttribute('href'), label);
+    // 即使没找到也给出明确提示，绝不「点击后空白」
+    showFootnote(text || '本书未找到该脚注的注释内容。', label);
   });
   $('footnote-close').addEventListener('click', hideTranslate);
 }

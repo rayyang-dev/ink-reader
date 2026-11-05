@@ -757,6 +757,16 @@ body[data-noindent="1"] .measure-page p { text-indent: 0; }
 }
 #footnote-pop button:active { background: var(--fg); color: var(--bg); }
 #footnote-text { white-space: pre-wrap; word-break: break-word; }
+/* 分页丢失 <a> 后补包的可点击脚注标记（视觉对齐原有链接） */
+.fn-marker {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font-size: .82em;
+  vertical-align: super;
+  padding: 0 1px;
+}
 
 /* ---------- AI 面板 ---------- */
 .ai-tabs {
