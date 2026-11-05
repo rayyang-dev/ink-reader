@@ -799,7 +799,111 @@ function hideTranslate() {
   $('sel-bar').classList.add('hidden');
   $('translate-pop').classList.add('hidden');
   $('ai-explain-pop').classList.add('hidden');
+  $('footnote-pop').classList.add('hidden');
 }
+// ---------- 脚注 ----------
+// 在任意 DOM 子树内按 id 精确查找（避免 querySelector 对特殊字符 id 的转义问题）
+function findByIdIn(root, id) {
+  if (!root) return null;
+  const nodes = root.querySelectorAll('[id]');
+  for (const n of nodes) if (n.id === id) return n;
+  return null;
+}
+// 判断锚点本身是否为脚注引用（依据 class / epub:type / 标记文本）
+function isFootnoteAnchor(a) {
+  if (!a || a.tagName !== 'A') return false;
+  const href = a.getAttribute('href') || '';
+  if (!href.startsWith('#')) return false;
+  const cls = (a.className || '').toLowerCase();
+  if (/(foot|note|ref|endnote|annotation)/.test(cls)) return true;
+  const et = a.getAttribute('epub:type') || '';
+  if (/noteref|footnote-ref|annotation-ref/i.test(et)) return true;
+  const t = (a.textContent || '').trim();
+  if (/^\[\d+\]$/.test(t) || /^\d+$/.test(t) || /^[\*\u2020\u2021\u2022]+$/.test(t)) return true;
+  return false;
+}
+// 判断目标元素是否为脚注内容（依据 id / class / epub:type）
+function isFootnoteTarget(el) {
+  if (!el) return false;
+  const id = (el.id || '').toLowerCase();
+  if (/(fn|foot|note|endnote|annotation)/.test(id)) return true;
+  const cls = (el.className || '').toLowerCase();
+  if (/(foot|note|endnote|annotation)/.test(cls)) return true;
+  const et = el.getAttribute('epub:type') || '';
+  if (/footnote|endnote|note|annotation|backlink/i.test(et)) return true;
+  return false;
+}
+// 解析脚注文本：优先当前页 DOM，否则遍历整本书所有章节的 html
+function resolveFootnote(href) {
+  const id = (href || '').replace(/^#/, '').trim();
+  if (!id) return null;
+  let el = findByIdIn(document, id); // 覆盖当前页已渲染的内容
+  if (!el && currentBook && currentBook.chapters) {
+    const tmp = document.createElement('div');
+    for (const ch of currentBook.chapters) {
+      tmp.innerHTML = ch.html || '';
+      const found = findByIdIn(tmp, id);
+      if (found) { el = found; break; }
+    }
+  }
+  if (!el) return null;
+  // 克隆后剔除“返回正文”的回链（↩ / ↑ / back 等），避免把回链文本算进注释
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('a').forEach((a) => {
+    const t = (a.textContent || '').trim();
+    if (/^[\u2190\u21a9\u21e7\u2191]+$/.test(t) ||
+        /back/i.test(a.className) ||
+        /return/i.test(a.getAttribute('title') || '')) {
+      a.remove();
+    }
+  });
+  const text = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  return text || null;
+}
+function showFootnote(text, ref) {
+  $('footnote-ref').textContent = ref ? '· ' + ref : '';
+  $('footnote-text').textContent = text;
+  $('footnote-pop').classList.remove('hidden');
+}
+function initFootnoteLinks() {
+  const page = $('page');
+  if (!page) return;
+  // 事件委托：#page 元素本身常驻，内部 html 每页替换，委托可一直生效
+  page.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (!href.startsWith('#')) return; // 外链 / 相对链接不拦截
+    e.preventDefault();
+    e.stopPropagation(); // 阻止冒泡到 page-viewport 触发翻页/收起栏
+    hideTranslate();
+    const anchorFoot = isFootnoteAnchor(a);
+    const targetEl = (() => {
+      const id = href.slice(1);
+      let el = findByIdIn(document, id);
+      if (!el && currentBook && currentBook.chapters) {
+        const tmp = document.createElement('div');
+        for (const ch of currentBook.chapters) {
+          tmp.innerHTML = ch.html || '';
+          const f = findByIdIn(tmp, id);
+          if (f) { el = f; break; }
+        }
+      }
+      return el;
+    })();
+    const targetFoot = isFootnoteTarget(targetEl);
+    const text = targetEl ? resolveFootnote(href) : null;
+    if (text && (anchorFoot || targetFoot)) {
+      showFootnote(text, (a.textContent || '').trim());
+    } else if (targetEl && text) {
+      // 非脚注的内部锚点（如目录跳转）：分页阅读下无法滚动定位，直接以弹层展示目标文本，避免点击无反应
+      showFootnote(text, (a.textContent || '').trim());
+    }
+    // 其余情况：静默吞掉点击，避免“点击后空白/翻页”
+  });
+  $('footnote-close').addEventListener('click', hideTranslate);
+}
+
 function translateProviderLabel(p) {
   return ({ none: '关闭', mock: '演示', deepl: 'DeepL', google: 'Google', llm: 'AI' })[p] || p;
 }
@@ -829,7 +933,8 @@ function showSelBar(rect) {
 function onSelectEnd() {
   const pop = $('translate-pop');
   const epop = $('ai-explain-pop');
-  if (!pop.classList.contains('hidden') || !epop.classList.contains('hidden')) return; // 弹层开着时不抢焦点
+  const fpop = $('footnote-pop');
+  if (!pop.classList.contains('hidden') || !epop.classList.contains('hidden') || !fpop.classList.contains('hidden')) return; // 弹层开着时不抢焦点
   if ($('reader').classList.contains('hidden')) { hideTranslate(); return; }
   const t = (window.getSelection() && window.getSelection().toString().trim()) || '';
   if (!t) { hideTranslate(); lastSelText = ''; return; }
@@ -1339,6 +1444,8 @@ function bindEvents() {
   $('page-viewport').addEventListener('click', (e) => {
     const sel = window.getSelection && window.getSelection();
     if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 选中文字时不翻页
+    // 脚注弹层开启时，点击翻页区先关闭它（脚注链接自身已 stopPropagation，不会走到这里）
+    if (!$('footnote-pop').classList.contains('hidden')) { hideTranslate(); return; }
     if (document.querySelector('.panel.open')) { closePanels(); return; }
     if (!$('reader').classList.contains('hide-chrome')) {
       $('reader').classList.add('hide-chrome'); // 显示栏时，点击任意处收起
@@ -1415,6 +1522,7 @@ function bindEvents() {
     if (btn) removeCategory(btn.dataset.cat);
   });
   initTranslateSelection();
+  initFootnoteLinks();
 
   // 底部导航栏：切换主 Tab 时清空返回历史（主流 App 行为）
   document.querySelectorAll('#tabbar .tab').forEach((t) => {
