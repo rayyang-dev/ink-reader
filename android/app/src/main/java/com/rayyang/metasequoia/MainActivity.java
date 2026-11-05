@@ -4,6 +4,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeWebChromeClient;
 
+import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient.FileChooserParams;
