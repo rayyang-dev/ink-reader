@@ -1287,6 +1287,12 @@ function bindEvents() {
   $('import-txt').addEventListener('click', () => $('file-txt').click());
   $('import-epub').addEventListener('click', () => $('file-epub').click());
   $('import-pdf').addEventListener('click', () => $('file-pdf').click());
+  // 导入区“更多类型”折叠：默认只展示常见格式，点开才显示 FB2/HTML/DOCX
+  $('import-more').addEventListener('click', () => {
+    const extra = $('import-extra');
+    const hidden = extra.classList.toggle('hidden');
+    $('import-more').textContent = hidden ? '更多类型 ▾' : '收起 ▴';
+  });
   $('file-txt').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
