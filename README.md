@@ -226,7 +226,7 @@ keytool -genkeypair -v -keystore release-key.jks -alias inkreader \
 ## 📁 项目结构
 
 ```
-ink-reader/
+metasequoia-reader/
 ├── www/                            # Web 应用（PWA 入口，也是 Capacitor 的 webDir）
 │   ├── index.html                  # 单页结构：书架 / 阅读器 / 统计页 / 设置页 / 底部导航栏（阅读器内仍保留目录/书签/AI 侧滑面板）
 │   ├── css/style.css               # 墨水屏主题与全部样式（8 款可切换皮肤 / 翻书页 3D 动画 / Regal 整屏反色 / 纸感设计令牌）
