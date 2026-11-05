@@ -368,16 +368,27 @@ function renderCatManager() {
   });
 }
 
-// 给历史书籍（缺分类）按书名自动回填分类
-async function ensureCategories() {
+// 从章节 HTML 提取封面：EPUB 封面页常是 <img> 或 SVG <image xlink:href>，解析器已内联为 data URI。
+// 只扫前三章（封面/扉页通常在最前），并过滤过小的图标或装饰图。
+function extractCoverFromBook(book) {
+  const chs = (book && book.chapters) || [];
+  for (let i = 0; i < Math.min(chs.length, 3); i++) {
+    const html = chs[i].html || '';
+    const m = html.match(/<(?:img|image)\b[^>]*?\b(?:src|xlink:href|href)\s*=\s*["'](data:image\/[^"']+)["']/i);
+    if (m && m[1].length > 1000) return m[1];
+  }
+  return '';
+}
+// 启动时回填历史书籍缺失的元数据（分类 + 封面）。cover 用「是否已定义」判断，
+// 空串代表已检查过且无封面，避免每次启动重复扫描整本书的 HTML。
+async function ensureBookMeta() {
   const books = await getAllBooks();
   let changed = false;
   for (const b of books) {
-    if (!b.category) {
-      b.category = classifyTitle(b.title);
-      await putBook(b);
-      changed = true;
-    }
+    let dirty = false;
+    if (!b.category) { b.category = classifyTitle(b.title); dirty = true; }
+    if (typeof b.cover === 'undefined') { b.cover = extractCoverFromBook(b); dirty = true; }
+    if (dirty) { await putBook(b); changed = true; }
   }
   if (changed) await renderShelf();
 }
@@ -401,21 +412,35 @@ function mkBookRow(books) {
   books.forEach((b) => wrap.appendChild(renderBookCard(b)));
   return wrap;
 }
+// 书架进度百分比：优先用阅读器保存的精确 pct；旧进度数据无 pct 时按已读章节数估算
+function shelfProgressPct(b) {
+  const prog = getProgress(b.id);
+  if (!prog) return 0;
+  let pct = (typeof prog.pct === 'number' && isFinite(prog.pct))
+    ? prog.pct
+    : Math.round((((prog.ci || 0) + 1) / Math.max(1, b.chaptersCount || 1)) * 100);
+  return Math.max(0, Math.min(100, Math.round(pct)));
+}
 function renderBookCard(b) {
   const card = document.createElement('div');
   card.className = 'book-card';
   const coverChar = (b.title || '?').trim().charAt(0) || '?';
   const cat = b.category || '其他';
+  const cover = (typeof b.cover === 'string' && /^data:image\//i.test(b.cover)) ? b.cover : '';
+  const coverHtml = cover
+    ? `<div class="bc-cover has-cover"><img src="${escapeHtml(cover)}" alt="" /></div>`
+    : `<div class="bc-cover">${escapeHtml(coverChar)}</div>`;
   const opts = (settings.categories || []).concat(['其他'])
     .map((c) => `<option value="${escapeHtml(c)}"${c === cat ? ' selected' : ''}>${escapeHtml(c)}</option>`)
     .join('');
   card.innerHTML =
-    `<div class="bc-cover">${escapeHtml(coverChar)}</div>` +
+    coverHtml +
     `<div class="bc-body">` +
       `<div class="bc-title">${escapeHtml(b.title)}</div>` +
       `<div class="bc-meta">${escapeHtml(b.author || '佚名')} · ${b.chaptersCount} 章</div>` +
       `<select class="bc-cat" data-cat="${b.id}">${opts}</select>` +
     `</div>` +
+    `<div class="bc-progress">${shelfProgressPct(b)}%</div>` +
     `<div class="bc-del" data-del="${b.id}">删除</div>`;
   card.addEventListener('click', () => openBook(b.id));
   const del = card.querySelector('.bc-del');
@@ -443,6 +468,7 @@ function renderBookCard(b) {
 async function importBook(book) {
   try {
     if (!book.category) book.category = classifyTitle(book.title);
+    if (typeof book.cover === 'undefined') book.cover = extractCoverFromBook(book);
     await putBook(book);
     await renderShelf();
     maybeAutoSummary(book);
@@ -545,7 +571,7 @@ function regalFlash() {
 }
 async function afterPageTurn(chapterChanged) {
   await renderPage();
-  saveProgress(currentBook.id, ci, pi);
+  saveProgress(currentBook.id, ci, pi, computeProgressPct());
   turnCounter++;
   const N = settings.regalRefresh;
   if (N > 0 && ((N === 999 && chapterChanged) || (N !== 999 && turnCounter % N === 0))) {
@@ -1655,7 +1681,7 @@ function init() {
   applySettings();
   bindEvents();
   renderShelf();
-  ensureCategories();
+  ensureBookMeta();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
     // 新 Service Worker 接管后自动刷新一次，避免升级后一直显示旧缓存页面

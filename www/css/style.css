@@ -231,7 +231,8 @@ body { background: var(--bg); color: var(--fg); }
   background: linear-gradient(90deg, rgba(0,0,0,.30), rgba(0,0,0,0));
   pointer-events: none;
 }
-.bc-body { flex: 1 1 auto; padding: 12px 13px 14px; display: flex; flex-direction: column; gap: 6px; min-height: 98px; }
+/* 底部多留 16px，给右下角进度角标留出独立空间，避免与分类下拉挤在同一行 */
+.bc-body { flex: 1 1 auto; padding: 12px 13px 30px; display: flex; flex-direction: column; gap: 6px; min-height: 98px; }
 .bc-title { font-size: 15px; font-weight: 600; line-height: 1.42;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .bc-meta { font-size: 12px; color: var(--fg-soft); letter-spacing: 0.2px; }
@@ -248,6 +249,25 @@ body { background: var(--bg); color: var(--fg); }
   z-index: 3;
 }
 .bc-del:active { background: var(--fg); color: var(--bg); }
+/* 阅读进度角标：书卡右下角（不抢占分类下拉的点击） */
+.bc-progress {
+  position: absolute; right: 9px; bottom: 9px;
+  z-index: 2;
+  font-size: 11px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .2px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  color: #fff;
+  background: rgba(30,30,30,.58);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+/* 真实封面：完整显示（书封多为竖版，cover 会裁掉书名），两侧保留原青绿渐变与书脊折光 */
+.bc-cover.has-cover img {
+  display: block; width: 100%; height: 100%;
+  object-fit: contain;
+}
 
 .drop-hint {
   margin-top: 18px;

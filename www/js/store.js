@@ -81,6 +81,7 @@ function metaOf(b) {
     addedAt: b.addedAt,
     chaptersCount: (b.chapters || []).length,
     category: b.category || '其他',
+    cover: b.cover || '', // 封面图（data URI，导入时从章节内联图片提取）
     aiTags: (b.ai && Array.isArray(b.ai.tags) && b.ai.tags) || [],
   };
 }
@@ -215,9 +216,10 @@ export function saveSettings(s) {
 export function loadProgress() {
   return lsGet(K_PROGRESS, {});
 }
-export function saveProgress(bookId, ci, pi) {
+// pct 为阅读器算出的精确进度百分比，供书架角标直接展示；旧数据无此字段时由书架按章节估算
+export function saveProgress(bookId, ci, pi, pct) {
   const all = loadProgress();
-  all[bookId] = { ci, pi };
+  all[bookId] = { ci, pi, pct: typeof pct === 'number' && isFinite(pct) ? pct : null };
   lsSet(K_PROGRESS, all);
 }
 export function getProgress(bookId) {
