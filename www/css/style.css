@@ -29,12 +29,6 @@ body[data-theme="simple"] {
   --bg: #f7f6f2; --fg: #1f1f1f; --fg-soft: #6a6a6a;
   --bar-bg: #efeee9; --bar-fg: #1f1f1f; --accent: #444444; --border: #e0ded7;
 }
-/* 竹简：浅青绿底 + 青绿点缀；翻页为竹片依次翻开立起露出新页 */
-body[data-theme="bamboo"] {
-  --bg: #e2efe1; --fg: #243a2e; --fg-soft: #5b7567;
-  --bar-bg: #d3e4d1; --bar-fg: #243a2e; --accent: #1f9e83; --border: #bcd6b6;
-}
-
 /* 墨水风：宣纸肌理——暖白纸底 + 手工纸的色温不均（浓淡斑块）+ 细颗粒纤维纸纹。
    叠层为静态（无动画，符合墨水屏零动画原则），用 multiply 叠加于纸底之上。 */
 body[data-theme="ink"]::after {
@@ -55,23 +49,6 @@ body[data-theme="ink"]::after {
   background-repeat: no-repeat, no-repeat, no-repeat, repeat;
 }
 
-/* 竹简：强化的竹简肌理——竖向竹片缝隙 + 两条横向编绳（绑定竹片），呼应竹简装帧 */
-body[data-theme="bamboo"]::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: multiply;
-  background-image:
-    /* 两条横向编绳（上下各一，绑定竹片） */
-    linear-gradient(0deg, transparent 0 29%, rgba(150,110,60,0.30) 29% 30.6%, transparent 30.6% 69.4%, rgba(150,110,60,0.30) 69.4% 71%, transparent 71% 100%),
-    /* 竖向竹片缝隙：浅竹片底 + 细绿缝 */
-    repeating-linear-gradient(90deg,
-      rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 22px,
-      rgba(31,158,131,0.16) 22px, rgba(31,158,131,0.16) 24px);
-}
-
 /* ---------- 各主题排版气质（在统一排版变量之上追加专属特色） ---------- */
 /* 简约：纯无衬线、去装饰，标题与正文同族、无分割线 */
 body[data-theme="simple"] .page,
@@ -81,11 +58,6 @@ body[data-theme="simple"] .measure-page {
 body[data-theme="simple"] .page h1, body[data-theme="simple"] .page h2, body[data-theme="simple"] .page h3,
 body[data-theme="simple"] .measure-page h1, body[data-theme="simple"] .measure-page h2, body[data-theme="simple"] .measure-page h3 {
   border: none; color: var(--fg); font-weight: 700;
-}
-/* 竹简：衬线 + 横向编绳（与全局竹简肌理一致，阅读页自身也显装订感） */
-body[data-theme="bamboo"] .page,
-body[data-theme="bamboo"] .measure-page {
-  font-family: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
 }
 /* 编绳已由全局 body::after 统一提供，阅读页此处不再额外加竖线，避免重复叠加 */
 /* 墨水风：标题下方一道淡墨短横，像落笔的一划 */
@@ -370,18 +342,6 @@ body { background: var(--bg); color: var(--fg); }
   0%   { opacity: 0; }
   30%  { opacity: .55; }
   100% { opacity: 0; }
-}
-
-/* 竹简：从左书脊翻页——左侧竹轴（书脊） */
-#reader .bamboo-spine { position:absolute; left:0; top:0; bottom:0; width:14px; z-index:6; pointer-events:none;
-  background: linear-gradient(90deg, #6fae86, #cfe7c9 45%, #6fae86);
-  box-shadow: 3px 0 10px rgba(20,90,60,.40), inset 0 0 0 1px rgba(31,158,131,.35); border-radius:0 7px 7px 0; }
-/* 翻走的竹页：竖竹片 + 横向编绳覆盖层，强化竹简味 */
-#reader .bamboo-leaf::after {
-  content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply;
-  background-image:
-    linear-gradient(0deg, transparent 0 29%, rgba(150,110,60,0.32) 29% 30.6%, transparent 30.6% 69.4%, rgba(150,110,60,0.32) 69.4% 71%, transparent 71% 100%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 22px, rgba(31,158,131,0.20) 22px 24px);
 }
 
 /* 简约真实翻书：克隆出的“翻走的书页”及其明暗阴影（绕书脊旋出，露出底页） */

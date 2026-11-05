@@ -39,14 +39,13 @@ const FONT_STACK = {
 };
 
 // 主题皮肤（顺序即设置页色板顺序）；THEME_PREVIEW 仅用于色板预览的 bg/fg
-// 只保留 3 套，每套有专属翻书动画：墨水风(笔迹淡化) / 简约(整页水平滑动) / 竹简(竹片翻开)
+// 仅保留 2 套：墨水风(宣纸底·笔迹淡化翻页) / 简约(米白底·整页水平滑动)
 const THEMES = [
   { id: 'ink', name: '墨水风' },
   { id: 'simple', name: '简约' },
-  { id: 'bamboo', name: '竹简' },
 ];
 const THEME_PREVIEW = {
-  ink: ['#f4eddc', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'], bamboo: ['#e2efe1', '#243a2e'],
+  ink: ['#faf7ef', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'],
 };
 
 // 法律声明文案（隐私政策 / 用户协议 / 权限说明）。iOS 与华为两平台通用，纯本地静态内容，无服务器依赖。
@@ -124,7 +123,7 @@ const LEGAL_CONTENT = {
 
 // ---------- 状态 ----------
 let settings = loadSettings();
-// 主题已精简为 ink / simple / bamboo；旧版本残留的 theme 值统一回退到默认墨水风
+// 主题仅保留 ink / simple（竹简已移除）；旧版本残留的 theme 值统一回退到默认墨水风
 if (!THEMES.some((t) => t.id === settings.theme)) {
   settings.theme = DEFAULT_SETTINGS.theme;
   saveSettings(settings);
@@ -515,7 +514,6 @@ async function flipPage(dir, mutate) {
   if (isFlipping) return;
   isFlipping = true;
   if (settings.theme === 'ink') return flipInk(dir, mutate);
-  if (settings.theme === 'bamboo') return flipBamboo(dir, mutate);
   return flipBook(dir, mutate);
 }
 
@@ -607,35 +605,6 @@ async function flipBook(dir, mutate) {
   endFlip();
 }
 
-// ③ 竹简：从左书脊翻页——当前竹页绕左侧竹轴翻走，露出下方新页（竹片+编绳的竹页）
-async function flipBamboo(dir, mutate) {
-  const page = $('page');
-  const vp = $('page-viewport');
-  const isNext = dir === 'next';
-  const end = isNext ? -180 : 180;
-  // 翻页过程中，远离书脊的一侧略暗，模拟竹页翻动时的弧度
-  const shade = 'linear-gradient(to right, rgba(31,158,131,0) 25%, rgba(20,90,60,0.30))';
-  // 左侧竹轴（书脊）
-  const spine = document.createElement('div');
-  spine.className = 'bamboo-spine';
-  vp.appendChild(spine);
-  // 克隆当前页为"翻走的竹页"
-  const leaf = document.createElement('div');
-  leaf.className = 'page flip-leaf bamboo-leaf';
-  leaf.innerHTML = page.innerHTML + '<div class="flip-shade"></div>';
-  leaf.style.zIndex = '5';
-  leaf.style.pointerEvents = 'none';
-  leaf.style.transformOrigin = 'left center';
-  leaf.style.setProperty('--flip-shade', shade, 'important');
-  vp.appendChild(leaf);
-  await mutate(); // 真实 #page 已渲染下一页（藏于 leaf 之下）
-  leaf.style.setProperty('transition', 'transform .62s cubic-bezier(.45,.05,.3,1)', 'important');
-  leaf.style.transform = `rotateY(${end}deg)`;
-  await wait(660);
-  leaf.remove();
-  spine.remove();
-  endFlip();
-}
 function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
