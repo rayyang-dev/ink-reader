@@ -883,7 +883,8 @@ function footnoteIndex() {
     bases[i] = chapterBase(ch);
     const html = ch.html || '';
     const seen = new Set();
-    const re = /\bid\s*=\s*["']([^"']+)["']/gi;
+    // 只认真正的 id 属性，避免把 xml:id / data-id 之类误收入索引
+    const re = /(?:^|\s)id\s*=\s*["']([^"']+)["']/gi;
     let m;
     while ((m = re.exec(html))) {
       const id = m[1];
