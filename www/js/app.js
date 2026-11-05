@@ -45,7 +45,7 @@ const THEMES = [
   { id: 'simple', name: '简约' },
 ];
 const THEME_PREVIEW = {
-  ink: ['#faf7ef', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'],
+  ink: ['#fefdfb', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'],
 };
 
 // 法律声明文案（隐私政策 / 用户协议 / 权限说明）。iOS 与华为两平台通用，纯本地静态内容，无服务器依赖。
