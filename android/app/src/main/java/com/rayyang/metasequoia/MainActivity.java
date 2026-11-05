@@ -1,4 +1,4 @@
-package com.rayyang.inkstone;
+package com.rayyang.metasequoia;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Bridge;

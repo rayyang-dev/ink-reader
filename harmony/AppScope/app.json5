@@ -1,6 +1,6 @@
 {
   "app": {
-    "bundleName": "com.rayyang.inkstone",
+    "bundleName": "com.rayyang.metasequoia",
     "bundleType": "app",
     "vendor": "example",
     "versionCode": 1000000,

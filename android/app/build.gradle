@@ -1,15 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.rayyang.inkstone"
-    archivesBaseName = "Inkstone"
+    namespace = "com.rayyang.metasequoia"
+    archivesBaseName = "Metasequoia"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.rayyang.inkstone"
+        applicationId "com.rayyang.metasequoia"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.1.2"
+        versionCode 5
+        versionName "1.1.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -42,7 +42,7 @@ android {
             }
         }
         debug {
-            // 调试包使用独立包名 + 名称，绝不与正式版（com.rayyang.inkstone）撞名或互相覆盖
+            // 调试包使用独立包名 + 名称，绝不与正式版（com.rayyang.metasequoia）撞名或互相覆盖
             applicationIdSuffix ".debug"
             debuggable true
         }

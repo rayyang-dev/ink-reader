@@ -17,8 +17,8 @@
   <!-- top app bar -->
   <line x1="20" y1="70" x2="360" y2="70" stroke="#cfcfc8" stroke-width="1"/>
   <!-- brand seal: 水杉 tree -->
-  <rect x="40" y="80" width="26" height="26" rx="6" fill="#2f6f7a"/>
-  <path d="M53 83 L57 92 L55 92 L59 100 L47 100 L51 92 L49 92 Z" fill="#fff"/>
+  <rect x="40" y="80" width="26" height="26" rx="6" fill="#faf7ef" stroke="#2f6f7a" stroke-width="1.6"/>
+  <path d="M53 83 L57 92 L55 92 L59 100 L47 100 L51 92 L49 92 Z" fill="#2f6f7a"/>
   <text x="74" y="100" font-size="18" font-weight="700" fill="#111">水杉 · Metasequoia</text>
   <rect x="306" y="80" width="26" height="20" rx="4" fill="none" stroke="#111" stroke-width="1.6"/>
   <line x1="311" y1="86" x2="327" y2="86" stroke="#111" stroke-width="1.4"/>

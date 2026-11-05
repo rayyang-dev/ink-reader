@@ -21,7 +21,7 @@ const FILES = [
   'www/js/translate.js',
   'www/js/mobidec.js',
   'www/js/pdfview.js',
-  'android/app/src/main/java/com/rayyang/inkstone/MainActivity.java',
+  'android/app/src/main/java/com/rayyang/metasequoia/MainActivity.java',
   'android/app/src/main/AndroidManifest.xml',
 ];
 

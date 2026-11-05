@@ -21,8 +21,8 @@ html, body {
 /* ---------- 主题（精简为 3 套，各有专属翻书动画） ---------- */
 /* 墨水风：宣纸暖白底 + 墨青字；翻页为「毛笔墨迹淡化 → 新页字浮现」 */
 body[data-theme="ink"] {
-  --bg: #f4eddc; --fg: #202b31; --fg-soft: #5d6b72;
-  --bar-bg: #e8dec8; --bar-fg: #202b31; --accent: #2f6f7a; --border: #d3c8b1;
+  --bg: #faf7ef; --fg: #202b31; --fg-soft: #5d6b72;
+  --bar-bg: #efe9da; --bar-fg: #202b31; --accent: #2f6f7a; --border: #e3dccb;
 }
 /* 简约：近白极简、无装饰；翻页为干净的位移淡入淡出 */
 body[data-theme="simple"] {
@@ -45,10 +45,10 @@ body[data-theme="ink"]::after {
   z-index: 1;
   mix-blend-mode: multiply;
   background-image:
-    /* 手工宣纸的暖色不均：边角略暗、中心微透 */
-    radial-gradient(68% 52% at 16% 10%, rgba(193,166,116,0.10), transparent 60%),
-    radial-gradient(60% 48% at 86% 90%, rgba(150,120,78,0.08), transparent 60%),
-    radial-gradient(120% 95% at 50% 38%, rgba(255,251,242,0), rgba(206,184,140,0.13) 100%),
+    /* 手工宣纸的暖色不均：仅留极淡纸色，去除土黄感 */
+    radial-gradient(68% 52% at 16% 10%, rgba(190,172,135,0.05), transparent 60%),
+    radial-gradient(60% 48% at 86% 90%, rgba(165,142,105,0.04), transparent 60%),
+    radial-gradient(120% 95% at 50% 38%, rgba(255,251,242,0), rgba(210,198,170,0.05) 100%),
     /* 细颗粒纸纹：高频噪点模拟纤维与纸面凹凸 */
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/></svg>");
   background-size: 100% 100%, 100% 100%, 100% 100%, 300px 300px;
