@@ -1,16 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect x="0" y="0" width="512" height="512" rx="110" fill="#faf7ef"/>
-  <g fill="none" stroke="#2f6f7a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" transform="translate(256,256) scale(4.4)">
-    <path d="M0,52 L0,-46"/>
-    <path d="M0,30 Q-20,26 -38,18"/>
-    <path d="M0,30 Q20,26 38,18"/>
-    <path d="M0,12 Q-16,9 -30,4"/>
-    <path d="M0,12 Q16,9 30,4"/>
-    <path d="M0,-6 Q-12,-9 -22,-12"/>
-    <path d="M0,-6 Q12,-9 22,-12"/>
-    <path d="M0,-22 Q-8,-25 -14,-28"/>
-    <path d="M0,-22 Q8,-25 14,-28"/>
-    <path d="M0,-34 Q-4,-37 -7,-42"/>
-    <path d="M0,-34 Q4,-37 7,-42"/>
+  <defs>
+    <linearGradient id="seal" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#2f6f7a"/>
+      <stop offset="100%" stop-color="#1f4950"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="110" fill="url(#seal)"/>
+  <g fill="#fff" transform="translate(256,256) scale(9) translate(-24,-24)">
+    <path d="M24 6 L31 19 L27 19 L34 33 L14 33 L21 19 L17 19 Z"/>
+    <rect x="21" y="33" width="6" height="9"/>
   </g>
 </svg>
