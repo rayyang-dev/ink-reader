@@ -74,6 +74,22 @@ body { background: var(--bg); color: var(--fg); }
 
 .hidden { display: none !important; }
 
+/* 导入中遮罩：居中胶囊提示，非阻塞（Worker 已保证主线程不冻屏） */
+#busy {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9000;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 15px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
 .screen {
   position: fixed;
   inset: 0;

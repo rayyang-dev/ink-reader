@@ -432,6 +432,11 @@
 
     <div id="toast" class="hidden"></div>
 
+    <!-- 导入中遮罩：解析/写入后台进行时给出明确反馈（非阻塞） -->
+    <div id="busy" class="hidden" role="status" aria-live="polite">
+      <span id="busy-text">正在导入…</span>
+    </div>
+
     <!-- EPUB 解压库（UMD 全局 fflate） -->
     <script src="js/vendor/fflate.js"></script>
 

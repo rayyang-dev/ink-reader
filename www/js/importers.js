@@ -90,6 +90,7 @@ export async function parseEpub(file) {
 
   // 4. 构建章节
   const chapters = [];
+  const images = {}; // 抽取出的图片字节：路径 -> { b: Uint8Array, m: mime }，渲染当页时才转 blob URL
   for (const idref of spine) {
     const item = manifest[idref];
     if (!item) continue;
@@ -102,7 +103,7 @@ export async function parseEpub(file) {
     html = extractBody(html);
     // 图片 src 相对的是 XHTML 自身所在目录，而非 OPF 目录（否则分目录存放图片的 EPUB 会全部裂图）
     const chapterDir = fullKey.includes('/') ? fullKey.slice(0, fullKey.lastIndexOf('/') + 1) : '';
-    html = inlineImages(html, chapterDir, files);
+    html = inlineImages(html, chapterDir, files, images);
     html = sanitize(html);
     const title = findTitle(html, tocMap, fullKey, chapters.length);
     // src 记录该章节在 EPUB 包内的原始路径：跨文件脚注 href（如 ../Text/chapter91.xhtml#m28）
@@ -119,6 +120,7 @@ export async function parseEpub(file) {
     author: author.trim(),
     source: 'epub',
     chapters,
+    images,
   };
 }
 
@@ -295,7 +297,10 @@ function findTitle(html, tocMap, fullKey, idx) {
   return '第 ' + (idx + 1) + ' 节';
 }
 
-function inlineImages(html, baseDir, files) {
+function inlineImages(html, baseDir, files, images) {
+  // 不内联 base64：避免章节 HTML 在内存/IndexedDB 随图膨胀、且整章图一次性解码。
+  // 改为抽取图片字节存入 images 映射，章节 HTML 仅留 <img data-img="路径"> 占位，
+  // 真正解码延迟到阅读器渲染当页时才做（见 app.js resolvePageImages）。
   // 同时处理 <img> 与 SVG <image>，兼容双/单引号，支持 src / href / xlink:href
   const tagRe = /<(img|image)\b([^>]*?)\/?>/gi;
   let result = '';
@@ -315,10 +320,8 @@ function inlineImages(html, baseDir, files) {
         const data = files[abs];
         if (data) {
           const mime = mimeFromName(val);
-          const b64 = bytesToBase64(data);
-          const newUrl = 'data:' + mime + ';base64,' + b64;
-          // 替换该属性值，保留原属性名与双引号
-          replacement = full.replace(am[0], am[1] + '="' + newUrl + '"');
+          images[abs] = { b: data, m: mime }; // 原始字节 + MIME，渲染时再转 blob URL
+          replacement = full.replace(am[0], 'data-img="' + abs + '"');
         }
       }
     }
@@ -452,13 +455,13 @@ export async function parseFb2(file) {
     }
   }
 
-  // 内嵌二进制图片 -> data URI
+  // 内嵌二进制图片 -> 抽取为 data URI 条目（不内联进章节 HTML，渲染当页再解析）
   const images = {};
   for (const b of byLocal(doc, 'binary')) {
     const id = b.getAttribute('id');
     const ct = b.getAttribute('content-type') || 'image/jpeg';
     const data = (b.textContent || '').replace(/\s+/g, '').trim();
-    if (id && data) images['#' + id] = 'data:' + ct + ';base64,' + data;
+    if (id && data) images['#' + id] = { s: 'data:' + ct + ';base64,' + data };
   }
 
   const body = byLocal(fb, 'body')[0];
@@ -480,7 +483,7 @@ export async function parseFb2(file) {
     chapters.length = 0;
     chapters.push({ title, html: '<p></p>' });
   }
-  return { id: 'fb2-' + hash(title + author + Date.now()), title, author, source: 'fb2', chapters };
+  return { id: 'fb2-' + hash(title + author + Date.now()), title, author, source: 'fb2', chapters, images };
 }
 function fb2NodeToHtml(node, images) {
   if (node.nodeType === 3) return esc(node.nodeValue);
@@ -488,8 +491,8 @@ function fb2NodeToHtml(node, images) {
   const tag = localNameOf(node);
   if (tag === 'image') {
     const ref = getAttr(node, 'href');
-    const uri = images[ref];
-    return uri ? '<img src="' + uri + '" alt="" />' : '';
+    const entry = images[ref];
+    return entry ? '<img data-img="' + ref + '" alt="" />' : '';
   }
   const kids = Array.from(node.childNodes).map((c) => fb2NodeToHtml(c, images)).join('');
   switch (tag) {

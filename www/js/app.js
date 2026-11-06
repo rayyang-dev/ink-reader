@@ -156,6 +156,46 @@ const pdfImageCache = new Map(); // ci -> 已渲染的图片 dataURL
 
 const $ = (id) => document.getElementById(id);
 
+// 当前页已创建的图片 blob URL，翻页/退出阅读器时统一回收，避免内存累积
+let pageBlobUrls = [];
+function revokePageBlobs() {
+  if (pageBlobUrls.length) {
+    pageBlobUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch (e) {} });
+    pageBlobUrls = [];
+  }
+}
+// 阅读页里 <img data-img="路径"> / <image data-img="路径"> 占位，按 currentBook.images 解析为真实地址：
+// 字节条目转 blob URL（仅当页解码），data URI 条目（如 FB2）直接用。图片不再随章节 HTML 常驻内存。
+function resolvePageImages() {
+  const book = currentBook;
+  if (!book || !book.images) return;
+  const page = $('page');
+  if (!page) return;
+  const els = page.querySelectorAll('img[data-img], image[data-img]');
+  for (const el of els) {
+    const key = el.getAttribute('data-img');
+    const entry = book.images[key];
+    if (!entry) continue;
+    let url = null;
+    if (typeof entry.s === 'string') {
+      url = entry.s; // 已是 data URI（如 FB2）
+    } else if (entry.b) {
+      try {
+        const blob = new Blob([entry.b], { type: entry.m || 'image/png' });
+        url = URL.createObjectURL(blob);
+        pageBlobUrls.push(url);
+      } catch (e) { continue; }
+    }
+    if (!url) continue;
+    if (el.tagName.toLowerCase() === 'image') {
+      el.setAttribute('href', url);
+      el.setAttributeNS('http://www.w3.org/1999/xlink', 'href', url);
+    } else {
+      el.src = url;
+    }
+  }
+}
+
 // 复杂/加密的 Kindle 格式（AZW3/KFX 多为加密或 KF8 复杂结构），浏览器内无法可靠解析，引导 Calibre
 // 注：.mobi / .azw（无加密）已由 mobidec.js 在应用内直接解析导入
 const KINDLE_RE = /\.(azw3|kfx)$/i;
@@ -565,7 +605,9 @@ async function renderPage() {
     updateProgress();
     return;
   }
+  revokePageBlobs(); // 回收上一页创建的图片 blob URL
   $('page').innerHTML = pages[pi] || '';
+  resolvePageImages();       // 把当页 <img data-img> 占位解析为真实图片（仅当页解码）
   enhanceFootnoteMarkers(); // 分页若丢了 <a>，把裸 [n] 补成可点击脚注标记
   applyHighlights();        // 还原本章已保存的正文标注（跨页/重进都在）
   $('chapter-title').textContent = currentBook.chapters[ci].title;
@@ -760,6 +802,7 @@ async function openBook(id, jump) {
   currentView = 'reader';
 }
 function exitReader() {
+  revokePageBlobs(); // 退出阅读器：回收当前页图片 blob URL
   hideTranslate();
   stopReadingTimer();
   if (currentPdfDoc) {
@@ -1634,6 +1677,18 @@ function showToast(msg) {
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.add('hidden'), 2800);
 }
+// 导入中遮罩：解析/写入在后台进行时给出明确反馈（非阻塞，Worker 已保证主线程不冻屏）
+function showBusy(msg) {
+  const b = $('busy');
+  if (!b) return;
+  const txt = $('busy-text');
+  if (txt && msg) txt.textContent = msg;
+  b.classList.remove('hidden');
+}
+function hideBusy() {
+  const b = $('busy');
+  if (b) b.classList.add('hidden');
+}
 // 阅读时累计时长：仅在阅读器可见、未在后台、未打开面板时计时；跨过打卡阈值自动打卡
 function startReadingTimer() {
   stopReadingTimer();
@@ -1846,78 +1901,101 @@ function bindEvents() {
   $('file-txt').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    await importBook(await parseTxt(f));
-    e.target.value = '';
+    showBusy('正在导入…');
+    try {
+      await importBook(await parseTxt(f));
+    } finally {
+      hideBusy();
+      e.target.value = '';
+    }
   });
   $('file-epub').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    showBusy('正在导入…');
     try {
       const book = await parseEpub(f);
       await importBook(book);
     } catch (err) {
       alert('EPUB 导入失败：' + err.message);
+    } finally {
+      hideBusy();
+      e.target.value = '';
     }
-    e.target.value = '';
   });
   $('file-pdf').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    showBusy('正在导入…');
     try {
       const book = await parsePdf(f);
       await importBook(book);
     } catch (err) {
       alert('PDF 导入失败：' + err.message);
+    } finally {
+      hideBusy();
+      e.target.value = '';
     }
-    e.target.value = '';
   });
   $('import-mobi').addEventListener('click', () => $('file-mobi').click());
   $('file-mobi').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    showBusy('正在导入…');
     try {
       const book = await parseMobi(f);
       await importBook(book);
     } catch (err) {
       alert('MOBI 导入失败：' + err.message);
+    } finally {
+      hideBusy();
+      e.target.value = '';
     }
-    e.target.value = '';
   });
   $('import-fb2').addEventListener('click', () => $('file-fb2').click());
   $('file-fb2').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    showBusy('正在导入…');
     try {
       const book = await parseFb2(f);
       await importBook(book);
     } catch (err) {
       alert('FB2 导入失败：' + err.message);
+    } finally {
+      hideBusy();
+      e.target.value = '';
     }
-    e.target.value = '';
   });
   $('import-html').addEventListener('click', () => $('file-html').click());
   $('file-html').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    showBusy('正在导入…');
     try {
       const book = await parseHtml(f);
       await importBook(book);
     } catch (err) {
       alert('HTML 导入失败：' + err.message);
+    } finally {
+      hideBusy();
+      e.target.value = '';
     }
-    e.target.value = '';
   });
   $('import-docx').addEventListener('click', () => $('file-docx').click());
   $('file-docx').addEventListener('change', async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    showBusy('正在导入…');
     try {
       const book = await parseDocx(f);
       await importBook(book);
     } catch (err) {
       alert('DOCX 导入失败：' + err.message);
+    } finally {
+      hideBusy();
+      e.target.value = '';
     }
-    e.target.value = '';
   });
 
   // 拖拽导入
@@ -1931,35 +2009,41 @@ function bindEvents() {
   );
   shelf.addEventListener('drop', async (e) => {
     const files = e.dataTransfer.files;
-    for (const f of files) {
-      if (KINDLE_RE.test(f.name)) {
-        alert(
-          '暂不支持该 Kindle 格式：' + f.name + '\n\n' +
-          'Kindle 的 .azw3 / .kfx 多为加密或 KF8 复杂结构，浏览器内无法可靠解析。\n\n' +
-          '最简单：用免费软件 Calibre 一键转成 EPUB 再导入本阅读器——\n' +
-          '  1) 打开 Calibre，把这本书拖进去；\n' +
-          '  2) 选中它 → 顶部「转换书籍」→ 右上角输出格式选 EPUB → 确定；\n' +
-          '  3) 右键该书 → 打开所在目录，取出 .epub 拖进本阅读器即可。\n\n' +
-          '（普通 .mobi / .azw 已支持应用内直接导入，无需转换。）'
-        );
-        continue;
+    if (!files || !files.length) return;
+    showBusy('正在导入…');
+    try {
+      for (const f of files) {
+        if (KINDLE_RE.test(f.name)) {
+          alert(
+            '暂不支持该 Kindle 格式：' + f.name + '\n\n' +
+            'Kindle 的 .azw3 / .kfx 多为加密或 KF8 复杂结构，浏览器内无法可靠解析。\n\n' +
+            '最简单：用免费软件 Calibre 一键转成 EPUB 再导入本阅读器——\n' +
+            '  1) 打开 Calibre，把这本书拖进去；\n' +
+            '  2) 选中它 → 顶部「转换书籍」→ 右上角输出格式选 EPUB → 确定；\n' +
+            '  3) 右键该书 → 打开所在目录，取出 .epub 拖进本阅读器即可。\n\n' +
+            '（普通 .mobi / .azw 已支持应用内直接导入，无需转换。）'
+          );
+          continue;
+        }
+        if (/\.mobi$/i.test(f.name) || /\.azw$/i.test(f.name)) {
+          try { await importBook(await parseMobi(f)); } catch (err) { alert('MOBI 导入失败：' + err.message); }
+        } else if (/\.txt$/i.test(f.name)) await importBook(await parseTxt(f));
+        else if (/\.epub$/i.test(f.name)) {
+          try { await importBook(await parseEpub(f)); } catch (err) { alert('EPUB 导入失败：' + err.message); }
+        } else if (/\.pdf$/i.test(f.name)) {
+          try { await importBook(await parsePdf(f)); } catch (err) { alert('PDF 导入失败：' + err.message); }
+        } else if (/\.fb2$/i.test(f.name)) {
+          try { await importBook(await parseFb2(f)); } catch (err) { alert('FB2 导入失败：' + err.message); }
+        } else if (/\.html?$/i.test(f.name)) {
+          try { await importBook(await parseHtml(f)); } catch (err) { alert('HTML 导入失败：' + err.message); }
+        } else if (/\.docx$/i.test(f.name)) {
+          try { await importBook(await parseDocx(f)); } catch (err) { alert('DOCX 导入失败：' + err.message); }
+        } else {
+          alert('不支持的格式：' + f.name + '\n目前支持 .txt / .epub / .pdf / .mobi / .azw / .fb2 / .html / .docx（AZW3/KFX 请用 Calibre 转 EPUB）。');
+        }
       }
-      if (/\.mobi$/i.test(f.name) || /\.azw$/i.test(f.name)) {
-        try { await importBook(await parseMobi(f)); } catch (err) { alert('MOBI 导入失败：' + err.message); }
-      } else if (/\.txt$/i.test(f.name)) await importBook(await parseTxt(f));
-      else if (/\.epub$/i.test(f.name)) {
-        try { await importBook(await parseEpub(f)); } catch (err) { alert('EPUB 导入失败：' + err.message); }
-      } else if (/\.pdf$/i.test(f.name)) {
-        try { await importBook(await parsePdf(f)); } catch (err) { alert('PDF 导入失败：' + err.message); }
-      } else if (/\.fb2$/i.test(f.name)) {
-        try { await importBook(await parseFb2(f)); } catch (err) { alert('FB2 导入失败：' + err.message); }
-      } else if (/\.html?$/i.test(f.name)) {
-        try { await importBook(await parseHtml(f)); } catch (err) { alert('HTML 导入失败：' + err.message); }
-      } else if (/\.docx$/i.test(f.name)) {
-        try { await importBook(await parseDocx(f)); } catch (err) { alert('DOCX 导入失败：' + err.message); }
-      } else {
-        alert('不支持的格式：' + f.name + '\n目前支持 .txt / .epub / .pdf / .mobi / .azw / .fb2 / .html / .docx（AZW3/KFX 请用 Calibre 转 EPUB）。');
-      }
+    } finally {
+      hideBusy();
     }
   });
 
