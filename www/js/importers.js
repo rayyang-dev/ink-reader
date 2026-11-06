@@ -57,8 +57,6 @@ export async function parseTxt(file) {
 
 // ---------------- EPUB ----------------
 export async function parseEpub(file) {
-  const fflate = window.fflate;
-  if (!fflate) throw new Error('EPUB 解压库（fflate）未加载，请检查网络后刷新');
   if (!file || !file.arrayBuffer) throw new Error('传入的不是有效文件对象');
   let buf;
   try {
@@ -68,7 +66,7 @@ export async function parseEpub(file) {
   }
   let files;
   try {
-    files = unzipToMap(new Uint8Array(buf), fflate);
+    files = await unzipEntries(new Uint8Array(buf));
   } catch (e) {
     throw new Error('EPUB 解压失败（可能不是标准 EPUB/ZIP，或为加密书）：' + (e && e.message ? e.message : e));
   }
@@ -124,8 +122,64 @@ export async function parseEpub(file) {
   };
 }
 
-function unzipToMap(uint8, fflate) {
-  const out = fflate.unzipSync(uint8);
+// ---- 后台解压（Worker），主线程同步兜底 ----
+// 大书解压放在 Worker，避免主线程冻屏；Worker 不可用或异常时回退到主线程同步解压。
+let _unzipWorker = null;
+function getUnzipWorker() {
+  if (_unzipWorker === null) {
+    try {
+      _unzipWorker = new Worker('js/importer-worker.js');
+    } catch (e) {
+      _unzipWorker = false; // 标记不可用，不再重试
+    }
+  }
+  return _unzipWorker || null;
+}
+async function unzipEntries(uint8) {
+  const w = getUnzipWorker();
+  if (w) {
+    try {
+      const raw = await new Promise((resolve, reject) => {
+        const id = 'uz' + Math.random().toString(36).slice(2);
+        const clean = () => {
+          w.removeEventListener('message', onMsg);
+          w.removeEventListener('error', onErr);
+        };
+        const onMsg = (e) => {
+          const d = e.data;
+          if (!d || d.id !== id) return;
+          clean();
+          if (d.error) reject(new Error('解压失败：' + d.error));
+          else resolve(d.files);
+        };
+        const onErr = (err) => {
+          clean();
+          // Worker 加载/运行失败：禁用后台解压，本次回退同步解压
+          _unzipWorker = false;
+          reject(new Error('后台解压不可用，回退主线程'));
+        };
+        w.addEventListener('message', onMsg);
+        w.addEventListener('error', onErr);
+        // 不 transfer：保留主线程缓冲，Worker 异常时可安全回退同步解压
+        w.postMessage({ type: 'unzip', id, buf: uint8 });
+      });
+      const map = {};
+      for (const k in raw) map[normalizePath(k)] = raw[k];
+      return map;
+    } catch (e) {
+      // Worker 失败（极少）：回退主线程同步解压
+      const ff = window.fflate;
+      if (!ff) throw e;
+      const out = ff.unzipSync(uint8);
+      const map = {};
+      for (const k in out) map[normalizePath(k)] = out[k];
+      return map;
+    }
+  }
+  // 无 Worker 环境：主线程同步解压
+  const ff = window.fflate;
+  if (!ff) throw new Error('解压库（fflate）未加载，请刷新页面后重试');
+  const out = ff.unzipSync(uint8);
   const map = {};
   for (const k in out) map[normalizePath(k)] = out[k];
   return map;
@@ -497,11 +551,9 @@ export async function parseHtml(file) {
 
 // ================= DOCX（OOXML Word，复用 fflate 解压） =================
 export async function parseDocx(file) {
-  const fflate = window.fflate;
-  if (!fflate) throw new Error('解压库（fflate）未加载，请刷新页面后重试');
   let files;
   try {
-    files = fflate.unzipSync(new Uint8Array(await file.arrayBuffer()));
+    files = await unzipEntries(new Uint8Array(await file.arrayBuffer()));
   } catch (e) {
     throw new Error('DOCX 解压失败（可能不是有效的 .docx / ZIP 包）：' + (e && e.message ? e.message : e));
   }
