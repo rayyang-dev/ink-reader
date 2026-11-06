@@ -28,7 +28,7 @@
           </span>
           <div class="brand-text">
             <h1>水杉 <span>Metasequoia</span></h1>
-            <p class="subtitle">本地优先 · 墨水屏优化 · 无广告 · 零联网</p>
+            <p class="subtitle">本地优先 · 墨水屏优化 · 无广告</p>
           </div>
         </div>
       </header>
@@ -2043,7 +2043,7 @@ function docxStripText(el) {
 // AI 引擎：让本地阅读器具备「摘要/导读、选中即问、书中问答、阅读笔记、智能标签、段落双语」
 // 设计原则（与全应用一致）：
 //   1. 本地优先 + 隐私：仅使用读者自己在「AI 引擎」里配置的 Key/模型；Key 只在本机，本应用无服务器。
-//   2. 默认零联网：所有能力只有在 provider='llm' 且填入 Key 后才会联网。
+//   2. 默认不主动联网：所有能力只有在 provider='llm' 且填入 Key 后才会联网。
 //   3. 结果缓存：书籍级结果（摘要/标签/笔记）由调用方持久化到 book.ai（IndexedDB），避免重复消耗。
 // 底层统一走 js/llm.js 的 OpenAI 兼容客户端。
 
@@ -2381,7 +2381,7 @@ function inline(s) {
 /* ===== 文件: www/js/llm.js ===== */
 // 统一的 OpenAI 兼容 Chat Completions 客户端
 // 摘要 / 问答 / 解释 / 笔记 / 标签 / 翻译 全部共用这一个联网出口。
-// 关键：默认零联网；只有在「AI 引擎」里显式选择 AI 大模型并填入 Key 后才会发起请求。
+// 关键：默认不主动联网；只有在「AI 引擎」里显式选择 AI 大模型并填入 Key 后才会发起请求。
 
 /**
  * 单次对话补全。
@@ -2482,7 +2482,7 @@ function parseJson(s) {
 /* ===== 文件: www/js/translate.js ===== */
 // 中英互译（可插拔后端，API Key 仅存本机 localStorage，离线阅读不受影响）
 // 提供：mock（离线演示）/ DeepL / Google Translate / 兼容 OpenAI 的 AI 大模型
-// 设计原则：默认不联网；只有用户显式选择某提供方并填入 Key 后才会发起网络请求。
+// 设计原则：默认不主动联网；只有用户显式选择某提供方并填入 Key 后才会发起网络请求。
 // 注：AI 大模型（llm）这条路走 js/llm.js 的统一客户端，与摘要/问答/笔记共用同一套 Key/模型配置。
 
 import { llmChat } from './llm.js';

@@ -294,7 +294,9 @@ function mimeFromName(name) {
 }
 function bytesToBase64(bytes) {
   let binary = '';
-  const chunk = 0x8000;
+  // 分块上限设为 0x4000(16384)：String.fromCharCode.apply 的参数个数接近引擎上限时会抛栈溢出，
+  // 大封面图（base64 后常 > 数百 KB）分块更小更稳。
+  const chunk = 0x4000;
   for (let i = 0; i < bytes.length; i += chunk) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
   }

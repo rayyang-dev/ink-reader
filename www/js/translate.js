@@ -1,6 +1,6 @@
 // 中英互译（可插拔后端，API Key 仅存本机 localStorage，离线阅读不受影响）
 // 提供：mock（离线演示）/ DeepL / Google Translate / 兼容 OpenAI 的 AI 大模型
-// 设计原则：默认不联网；只有用户显式选择某提供方并填入 Key 后才会发起网络请求。
+// 设计原则：默认不主动联网；只有用户显式选择某提供方并填入 Key 后才会发起网络请求。
 // 注：AI 大模型（llm）这条路走 js/llm.js 的统一客户端，与摘要/问答/笔记共用同一套 Key/模型配置。
 
 import { llmChat } from './llm.js';

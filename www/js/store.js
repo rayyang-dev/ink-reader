@@ -199,7 +199,7 @@ export const DEFAULT_SETTINGS = {
   paragraphSpacing: 0.7,
   firstLineIndent: true,
   regalRefresh: 6,
-  pageFlip: true, // 翻页动画（翻书效果）；墨水屏设备可关闭
+  pageFlip: false, // 翻页动画（翻书效果）；默认关闭以贴合「默认翻页零动画」，手机/墨水屏可在设置开启
   // AI 引擎（翻译/摘要/问答/标签/笔记/双语 共用的 Key 与模型配置；默认关闭，不影响离线阅读）
   translateProvider: 'none',
   translateApiKey: '',
@@ -280,6 +280,7 @@ export function saveStats(stats) {
   lsSet(K_STATS, stats);
 }
 // 累计某本书当日的阅读毫秒数；跨过打卡阈值时标记当日打卡并返回 justCheckedIn
+let lastStatsPersist = 0; // 节流：避免每秒把整个 stats JSON 写入 localStorage
 export function addReadingTime(bookId, ms) {
   if (!bookId || !ms || ms <= 0) return { dayStat: null, justCheckedIn: false };
   const stats = loadStats();
@@ -294,7 +295,12 @@ export function addReadingTime(bookId, ms) {
     day.checkinAt = Date.now();
     justCheckedIn = true;
   }
-  saveStats(stats);
+  // 节流落盘：打卡达成时强制写盘避免丢失；其余最多每 5 秒写一次
+  const now = Date.now();
+  if (justCheckedIn || now - lastStatsPersist > 5000) {
+    saveStats(stats);
+    lastStatsPersist = now;
+  }
   return { dayStat: day, justCheckedIn };
 }
 // 按 日 / 周 / 月 聚合统计；返回 { totalMs, byBook, checkinDays, days }

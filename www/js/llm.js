@@ -1,6 +1,6 @@
 // 统一的 OpenAI 兼容 Chat Completions 客户端
 // 摘要 / 问答 / 解释 / 笔记 / 标签 / 翻译 全部共用这一个联网出口。
-// 关键：默认零联网；只有在「AI 引擎」里显式选择 AI 大模型并填入 Key 后才会发起请求。
+// 关键：默认不主动联网；只有在「AI 引擎」里显式选择 AI 大模型并填入 Key 后才会发起请求。
 
 /**
  * 单次对话补全。
@@ -29,14 +29,29 @@ export async function llmChat(opts) {
   const body = { model, messages, temperature };
   if (maxTokens) body.max_tokens = maxTokens;
 
-  const res = await fetch(base + '/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  // 超时控制：用户常接自建/本地模型（如 Ollama），卡住时若无超时 UI 会永远卡在「AI 思考中…」
+  const timeoutMs = opts && opts.timeoutMs != null ? opts.timeoutMs : 90000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(base + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (e && e.name === 'AbortError') {
+      throw new Error('AI 接口请求超时（' + Math.round(timeoutMs / 1000) + 's），请检查网络或模型服务是否可用');
+    }
+    throw e;
+  }
+  clearTimeout(timer);
 
   if (!res.ok) {
     let msg = 'AI 接口返回 ' + res.status;

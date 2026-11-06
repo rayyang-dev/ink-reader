@@ -136,7 +136,16 @@ let pages = []; // 当前章分页结果
 let chapterChars = [];
 let totalChars = 0;
 let turnCounter = 0;
-const pageCache = new Map(); // ci + 设置哈希 -> 分页
+const pageCache = new Map(); // ci + 设置哈希 -> 分页（LRU 上限，避免大书内存膨胀）
+const PAGE_CACHE_CAP = 12;
+function setPageCache(key, val) {
+  pageCache.set(key, val);
+  // 超出上限时淘汰最早缓存的章节分页（Map 保持插入顺序，首键即最旧）
+  if (pageCache.size > PAGE_CACHE_CAP) {
+    const oldest = pageCache.keys().next().value;
+    if (oldest !== undefined) pageCache.delete(oldest);
+  }
+}
 let repTimer = null;
 let currentPdfDoc = null; // PDF 阅读时持有的 pdf.js doc
 let readingTimer = null; // 阅读计时器
@@ -517,7 +526,7 @@ function paginateCurrentChapter() {
   } else {
     const m = computeMetrics();
     pages = paginateChapter(currentBook.chapters[ci].html, m);
-    pageCache.set(key, pages);
+    setPageCache(key, pages);
   }
   if (pi >= pages.length) pi = pages.length - 1;
   if (pi < 0) pi = 0;

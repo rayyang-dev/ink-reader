@@ -34,38 +34,44 @@ function tryAppend(pageEl, block, metrics) {
 }
 
 // 单个 block 超过一页时，按字符拆分到多页（保留外层标签，丢失块内跨页行内样式——可接受）
+// 优化：用二分查找确定「能放进当前页的最大前缀长度」，把 O(n²) 次强制重排降到 O(n·log n)。
 function splitBlock(state, block, host, metrics) {
   const text = block.textContent || '';
   if (!text) return;
   const tag = block.tagName.toLowerCase();
   const cls = block.getAttribute && block.getAttribute('class');
   let offset = 0;
-  let frag = makeFrag(tag, cls);
-  state.cur.appendChild(frag);
-  let i = 1;
-  while (offset + i <= text.length) {
-    frag.textContent = text.slice(offset, offset + i);
+  while (offset < text.length) {
+    const frag = makeFrag(tag, cls);
+    state.cur.appendChild(frag);
+    // 极端：连一个字符都放不下（极大字号/极小页）
+    frag.textContent = text[offset];
     if (state.cur.scrollHeight > metrics.pageHeight) {
-      if (i === 1) {
-        // 连一个字符都放不下（极端字号/极小页），强制放置并翻页，避免死循环
-        frag.textContent = text.slice(offset, offset + 1);
+      if (state.cur.childNodes.length > 1) {
+        // 当前页已有内容 -> 翻页后在新页重试
         pushPage(state);
         state.cur = newPage(host, metrics);
-        frag = makeFrag(tag, cls);
-        state.cur.appendChild(frag);
-        offset += 1;
-        i = 1;
-      } else {
-        frag.textContent = text.slice(offset, offset + i - 1);
-        pushPage(state);
-        state.cur = newPage(host, metrics);
-        frag = makeFrag(tag, cls);
-        state.cur.appendChild(frag);
-        offset = offset + i - 1;
-        i = 1;
+        continue;
       }
-    } else {
-      i++;
+      // 全新空页仍放不下 1 字：强制放置并翻页，避免死循环
+      pushPage(state);
+      state.cur = newPage(host, metrics);
+      offset += 1;
+      continue;
+    }
+    // 二分：在 [1, 剩余长度] 内找最大可放前缀
+    let lo = 1, hi = text.length - offset, best = 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      frag.textContent = text.slice(offset, offset + mid);
+      if (state.cur.scrollHeight <= metrics.pageHeight) { best = mid; lo = mid + 1; }
+      else { hi = mid - 1; }
+    }
+    frag.textContent = text.slice(offset, offset + best); // 提交已确定的前缀
+    offset += best;
+    if (offset < text.length) {
+      pushPage(state);
+      state.cur = newPage(host, metrics);
     }
   }
 }
