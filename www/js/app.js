@@ -14,6 +14,10 @@ import { translateText } from './translate.js';
 import {
   aiConfigured, aiSummary, aiExplain, aiAsk, aiNotes, aiBilingual, pageParagraphs, renderMarkdown,
 } from './ai.js';
+// Pro 层：统一翻页编排 / 端侧视线信号 / 阅读器交互增强。全部为本地 ESM，无任何裸 @capacitor/* 导入。
+import { createTurnController } from './turn.js';
+import { createGazeEngine } from './gaze.js';
+import { mountReaderPro } from './pro.js';
 
 // Capacitor 仅存在于原生外壳（Android WebView），由桥接层把插件挂在全局 window.Capacitor.Plugins 上。
 // 本项目 www/ 未打包，浏览器 / PWA 环境没有运行时、也没有 importmap，若用裸模块导入
@@ -44,9 +48,11 @@ const FONT_STACK = {
 const THEMES = [
   { id: 'ink', name: '墨水风' },
   { id: 'simple', name: '简约' },
+  { id: 'night', name: '夜览' },
 ];
 const THEME_PREVIEW = {
   ink: ['#fefdfb', '#202b31'], simple: ['#f7f6f2', '#1f1f1f'],
+  night: ['#15181a', '#c8c5bc'],
 };
 
 // 法律声明文案（隐私政策 / 用户协议 / 权限说明）。iOS 与华为两平台通用，纯本地静态内容，无服务器依赖。
@@ -110,6 +116,7 @@ const LEGAL_CONTENT = {
       <ul>
         <li><b>网络（INTERNET）</b>：仅用于 AI / 翻译请求与版本检查，不用于收集个人数据；关闭 AI 功能后基本不触发联网。</li>
         <li><b>文件访问</b>：书籍导入通过系统文件选择器（SAF）完成，本应用<b>不申请</b>存储读写权限，无法在未经你主动选择文件的情况下访问设备上的其他文件。</li>
+        <li><b>相机（CAMERA，可选）</b>：仅当你主动开启「视线翻页」时申请，用于在本机端侧检测「读到页底后回看页首」的回扫动作。视频帧只在内存中处理，<b>不上传、不保存、不写入日志</b>；关闭该功能、退出阅读器或切到后台会立即释放摄像头。默认关闭，拒绝授权不影响任何其他功能。</li>
       </ul>
       <h2>iOS（如后续版本上架）</h2>
       <ul>
@@ -117,7 +124,7 @@ const LEGAL_CONTENT = {
         <li><b>文件</b>：通过系统"文件 / 文档"选择器导入，不额外申请相册、通讯录、定位等敏感权限。</li>
       </ul>
       <h2>我们不申请的权限</h2>
-      <p>本应用不申请相机、定位、通讯录、麦克风、电话、短信等敏感权限；所有核心阅读与笔记功能均可在不授权任何敏感权限的情况下离线使用。</p>
+      <p>除上述<b>默认关闭、需你主动开启</b>的可选相机能力外，本应用不申请定位、通讯录、麦克风、电话、短信等敏感权限；所有核心阅读与笔记功能均可在不授权任何敏感权限的情况下离线使用。相机画面从不离开设备，本应用也没有可用于上传的后端。</p>
     `,
   },
 };
@@ -152,7 +159,11 @@ let readingTimer = null; // 阅读计时器
 let readingLastTs = 0; // 上一次计时戳
 let toastTimer = null;
 let isFlipping = false; // 翻页动画进行中，用于忽略重叠点击
-const pdfImageCache = new Map(); // ci -> 已渲染的图片 dataURL
+const pdfImageCache = new Map(); // ci -> 已渲染的图片 dataURL（LRU 上限，避免通读大 PDF 累积数十 MB）
+const PDF_CACHE_CAP = 8;
+let turn = null;   // 统一翻页编排层
+let gaze = null;   // 视线信号源
+let pro = null;    // 阅读器交互增强层
 
 const $ = (id) => document.getElementById(id);
 
@@ -548,10 +559,59 @@ function computeMetrics() {
   return { pageWidth: vp.clientWidth, pageHeight: vp.clientHeight };
 }
 function settingsHash() {
+  // 视口尺寸与主题也进 key：旋转 / 分屏 / 切主题后若沿用旧分页，会出现文字截断或大片留白。
+  const vp = $('page-viewport');
   return [
     settings.fontSize, settings.lineHeight, settings.margin, settings.justify,
     settings.letterSpacing, settings.paragraphSpacing, settings.firstLineIndent, settings.fontFamily,
+    settings.theme, vp ? vp.clientWidth : 0, vp ? vp.clientHeight : 0,
   ].join('|');
+}
+// 排版变化（字号 / 旋转 / 主题）后按「章内相对位置」保位，而不是生硬 clamp 旧页号。
+// 这是 Kindle / Apple Books 位置锚点的轻量等价实现，避免改个字号就跳到别处。
+function repaginateKeepAnchor() {
+  if (!currentBook || currentBook.source === 'pdf') return;
+  const oldN = Math.max(1, pages.length);
+  const ratio = oldN > 1 ? pi / (oldN - 1) : 0;
+  pageCache.clear();
+  paginateCurrentChapter();
+  pi = Math.max(0, Math.min(pages.length - 1, Math.round(ratio * (pages.length - 1))));
+  renderPage();
+  if (pro) pro.refresh();
+}
+// 进度条拖动：按全书字数百分比定位章与章内页（跨设备、跨字号都稳定）
+async function seekByPct(pct) {
+  if (!currentBook) return;
+  const target = (totalChars || 0) * Math.max(0, Math.min(100, pct)) / 100;
+  if (currentBook.source === 'pdf') {
+    ci = Math.max(0, Math.min(currentBook.chapters.length - 1,
+      Math.round(pct / 100 * (currentBook.chapters.length - 1))));
+    pi = 0;
+  } else {
+    let acc = 0, tci = chapterChars.length - 1;
+    for (let i = 0; i < chapterChars.length; i++) {
+      if (acc + chapterChars[i] > target || i === chapterChars.length - 1) { tci = i; break; }
+      acc += chapterChars[i];
+    }
+    ci = tci;
+    pi = 0;
+    paginateCurrentChapter();
+    const inCh = chapterChars[ci] ? (target - acc) / chapterChars[ci] : 0;
+    pi = Math.max(0, Math.min(pages.length - 1, Math.round(inCh * (pages.length - 1))));
+  }
+  await renderPage();
+  saveProgress(currentBook.id, ci, pi, computeProgressPct());
+  buildToc();
+}
+// 撤销 / 返回跳转前位置：统一走这里，避免各处直接改 ci/pi 造成状态不一致
+async function restorePosition(pos) {
+  if (!currentBook || !pos) return;
+  ci = Math.max(0, Math.min(pos.ci || 0, currentBook.chapters.length - 1));
+  pi = Math.max(0, pos.pi || 0);
+  paginateCurrentChapter();
+  await renderPage();
+  saveProgress(currentBook.id, ci, pi, computeProgressPct());
+  buildToc();
 }
 function paginateCurrentChapter() {
   if (currentBook.source === 'pdf') {
@@ -593,6 +653,10 @@ async function renderPage() {
         const r = await renderPdfPage(currentPdfDoc, ci, targetW);
         url = r.url;
         pdfImageCache.set(ci, url);
+        if (pdfImageCache.size > PDF_CACHE_CAP) {
+          const oldest = pdfImageCache.keys().next().value;
+          if (oldest !== undefined && oldest !== ci) pdfImageCache.delete(oldest);
+        }
       } catch (e) {
         $('page').innerHTML = '<p style="padding:24px">本页渲染失败：' + e.message + '</p>';
         $('chapter-title').textContent = currentBook.chapters[ci].title;
@@ -617,6 +681,7 @@ function updateProgress() {
   const total = pages.length;
   const pct = computeProgressPct();
   $('progress').textContent = `第${ci + 1}/${currentBook.chapters.length}章 · 第${pi + 1}/${total}页 · ${pct.toFixed(0)}%`;
+  if (pro) pro.refresh(); // 常驻进度条（控制条隐藏时也看得见）
 }
 function regalFlash() {
   const r = $('reader');
@@ -636,11 +701,17 @@ async function afterPageTurn(chapterChanged) {
 // 全局 *{transition/animation:none!important}（墨水屏零动画原则）下，动画一律靠内联 !important 放行。
 async function flipPage(dir, mutate) {
   const page = $('page');
-  if (!settings.pageFlip || !page) { mutate(); return; }
+  // 默认零动画分支必须 await：否则 PDF 的异步渲染会并发写 #page.innerHTML，快速连点直接串页。
+  if (!settings.pageFlip || !page) { return await mutate(); }
   if (isFlipping) return;
   isFlipping = true;
-  if (settings.theme === 'ink') return flipInk(dir, mutate);
-  return flipBook(dir, mutate);
+  try {
+    if (settings.theme === 'ink') return await flipInk(dir, mutate);
+    return await flipBook(dir, mutate);
+  } finally {
+    // 动画中任何异常都必须解锁，否则翻页会永久卡死直到重载。
+    if (isFlipping) endFlip();
+  }
 }
 
 // 收尾：清掉翻页期间注入的内联样式，交还零动画原则
@@ -684,7 +755,7 @@ async function flipInk(dir, mutate) {
   await wait(600);
 
   // 换页：新页从模糊里慢慢浮现
-  mutate();
+  await mutate();
   page.style.transform = 'translateY(10px) scale(.99)';
   page.style.filter = 'blur(6px)';
   page.style.opacity = '0';
@@ -753,6 +824,7 @@ async function prevPage() {
 
 // jump 形如 { ci, pi }：从「我的」汇总页跳回标注/收藏所在的原文位置
 async function openBook(id, jump) {
+  if (jump && currentBook && pro) pro.remember(); // 从「我的」跳回原文时保留返回位置
   const book = await getBook(id);
   if (!book) { alert('书籍数据缺失，可能已被删除。'); return; }
   currentBook = book;
@@ -800,8 +872,10 @@ async function openBook(id, jump) {
   // 进入阅读器：把来源视图压入返回栈（通常为书架）
   if (currentView !== 'reader') navStack.push(currentView);
   currentView = 'reader';
+  if (pro) pro.onOpenBook();
 }
 function exitReader() {
+  if (pro) pro.onExit(); // 立即停自动翻页并释放摄像头
   revokePageBlobs(); // 退出阅读器：回收当前页图片 blob URL
   hideTranslate();
   stopReadingTimer();
@@ -1193,7 +1267,14 @@ function initFootnoteLinks() {
     if (!marker && !a) return;
     const href = a ? (a.getAttribute('href') || '') : '';
     const info = a ? parseFootnoteHref(href) : null;
-    if (a && !info) return; // 外链不接管
+    if (a && !info) {
+      // 书内外部链接：既不导航离开应用（WebView 会丢失阅读状态），也不冒泡误触发翻页。
+      // 同时兑现「本地优先、零追踪」承诺——不主动向外发起任何请求。
+      e.preventDefault();
+      e.stopPropagation();
+      showToast('已拦截书内外部链接（本地阅读不联网）');
+      return;
+    }
     const imgAlt = a && a.querySelector('img[alt]') ? a.querySelector('img[alt]').getAttribute('alt') : '';
     const label = ((marker || a).textContent || '').trim() || (imgAlt || '');
     const looksLikeMarker = /^\[?\d{1,3}\]?$/.test(label) ||
@@ -1367,6 +1448,7 @@ function buildToc() {
     d.className = 'toc-item' + (i === ci ? ' active' : '');
     d.textContent = c.title;
     d.addEventListener('click', () => {
+      if (pro) pro.remember(); // 记下跳转前位置，可一键返回
       ci = i; pi = 0;
       paginateCurrentChapter();
       closePanels();
@@ -1390,6 +1472,7 @@ function buildBookmarks() {
     d.innerHTML = `<span>${escapeHtml(bm.label)}</span><span class="bm-del" data-i="${idx}">删</span>`;
     d.addEventListener('click', (e) => {
       if (e.target.dataset.i !== undefined) return;
+      if (pro) pro.remember();
       ci = bm.ci; pi = bm.pi;
       paginateCurrentChapter();
       closePanels();
@@ -1874,15 +1957,14 @@ async function genBilingual() {
 }
 
 // ---------- 设置变更 ----------
-function onSettingChange() {
-  saveSettings(settings);
-  if (currentBook && currentBook.source !== 'pdf') paginateCurrentChapter();
-  renderPage();
-}
+// 注意：阅读器隐藏时 #page-viewport 高度为 0，此时分页会得到「每页 1 字」并毒化缓存，
+// 因此带可见性守卫；同时按相对位置保位，改字号不再跳到别处。
 function scheduleRepaginate() {
   clearTimeout(repTimer);
   repTimer = setTimeout(() => {
-    if (currentBook && currentBook.source !== 'pdf') { paginateCurrentChapter(); renderPage(); }
+    if (!currentBook || currentBook.source === 'pdf') return;
+    if ($('reader').classList.contains('hidden')) return;
+    repaginateKeepAnchor();
   }, 120);
 }
 
@@ -2049,8 +2131,8 @@ function bindEvents() {
 
   // 阅读器导航
   $('btn-back').addEventListener('click', goBack);
-  $('btn-prev').addEventListener('click', prevPage);
-  $('btn-next').addEventListener('click', nextPage);
+  $('btn-prev').addEventListener('click', () => turn ? turn.request('prev', 'tap') : prevPage());
+  $('btn-next').addEventListener('click', () => turn ? turn.request('next', 'tap') : nextPage());
   $('btn-toc').addEventListener('click', () => openPanel('panel-toc'));
   $('btn-toc-top').addEventListener('click', () => openPanel('panel-toc'));
   $('btn-bookmark').addEventListener('click', () => { buildBookmarks(); openPanel('panel-bookmark'); });
@@ -2080,7 +2162,7 @@ function bindEvents() {
     b.addEventListener('click', closePanels)
   );
 
-  // 点击翻页区：左/右/中
+  // 点击翻页区：左/右/中（所有输入统一走编排层，带串行化与撤销）
   $('page-viewport').addEventListener('click', (e) => {
     const sel = window.getSelection && window.getSelection();
     if (sel && !sel.isCollapsed && sel.toString().trim()) return; // 选中文字时不翻页
@@ -2089,16 +2171,16 @@ function bindEvents() {
       hideTranslate(); return;
     }
     if (document.querySelector('.panel.open')) { closePanels(); return; }
-    if (!$('reader').classList.contains('hide-chrome')) {
-      $('reader').classList.add('hide-chrome'); // 显示栏时，点击任意处收起
-      return;
-    }
+    // 修复状态机陷阱：以前「控制条显示时点任意处只收起」，点左右热区白点一次不翻页。
+    // 现在收起与翻页可以同时发生，中间区仍负责唤出/收起。
+    const chromeVisible = !$('reader').classList.contains('hide-chrome');
+    if (chromeVisible) $('reader').classList.add('hide-chrome');
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const r = x / rect.width;
-    if (r < 0.3) prevPage();
-    else if (r > 0.7) nextPage();
-    else $('reader').classList.remove('hide-chrome');
+    const r = (e.clientX - rect.left) / rect.width;
+    const go = (dir) => (turn ? turn.request(dir, 'tap') : (dir === 'prev' ? prevPage() : nextPage()));
+    if (r < 0.3) go('prev');
+    else if (r > 0.7) go('next');
+    else if (!chromeVisible) $('reader').classList.remove('hide-chrome');
   });
 
   // 设置控件
@@ -2212,38 +2294,76 @@ function bindEvents() {
   // 键盘（桌面）
   document.addEventListener('keydown', (e) => {
     if ($('reader').classList.contains('hidden')) return;
-    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextPage(); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); prevPage(); }
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); turn ? turn.request('next', 'key') : nextPage(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); turn ? turn.request('prev', 'key') : prevPage(); }
     else if (e.key === 'Escape') closePanels();
   });
 
-  // 窗口尺寸变化 -> 重新分页
+  // 窗口尺寸变化 -> 清分页缓存并按相对位置保位重新分页
   let rz = null;
   window.addEventListener('resize', () => {
     clearTimeout(rz);
     rz = setTimeout(() => {
       if (currentBook && !$('reader').classList.contains('hidden')) {
-        if (currentBook.source === 'pdf') pdfImageCache.clear();
-        paginateCurrentChapter();
-        renderPage();
+        if (currentBook.source === 'pdf') { pdfImageCache.clear(); renderPage(); }
+        else repaginateKeepAnchor();
       }
     }, 200);
   });
 }
 
+// ---------- Pro 层装配 ----------
+// 所有输入源（点击 / 滑动 / 键盘 / 音量键 / 定时 / 视线）都只通过 turn.request 进入，
+// 翻页出口仍是既有的 nextPage/prevPage，保证 afterPageTurn 的进度保存、Regal、分页缓存全部复用。
+function createProLayer() {
+  turn = createTurnController({
+    perform: (dir) => (dir === 'prev' ? prevPage() : nextPage()),
+    getPosition: () => (currentBook ? { ci, pi } : null),
+    restore: restorePosition,
+    canTurn: () => !!currentBook && !$('reader').classList.contains('hidden'),
+    onTurn: ({ source }) => { if (pro) pro.onTurn(source); },
+  });
+  gaze = createGazeEngine({
+    onSignal: () => { if (turn) turn.request('next', 'gaze'); },
+    onStatus: (st) => { if (pro) pro.setGazeStatus(st); },
+    getConfig: () => settings,
+    onCalibration: (cal) => { settings.gazeCalibration = cal; saveSettings(settings); },
+  });
+  pro = mountReaderPro({
+    turn, gaze,
+    getSettings: () => settings,
+    setSetting: (k, v) => { settings[k] = v; applySettings(); saveSettings(settings); },
+    setLayoutSetting: (k, v) => { settings[k] = v; applySettings(); saveSettings(settings); scheduleRepaginate(); },
+    seekByPct,
+    restorePosition,
+    getProgress: () => (currentBook ? { pct: computeProgressPct(), ci, pi } : null),
+    showToast,
+  });
+  // 只读诊断 / 自动化回归入口：不参与业务逻辑，便于在无真机环境验证编排层与视线状态机。
+  window.__INK_PRO = {
+    turn, gaze, pro,
+    getSettings: () => settings,
+    getPosition: () => (currentBook ? { ci, pi } : null),
+  };
+}
+
 // ---------- 启动 ----------
 function init() {
   applySettings();
+  createProLayer();
   bindEvents();
   renderShelf();
   ensureBookMeta();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
-    // 新 Service Worker 接管后自动刷新一次，避免升级后一直显示旧缓存页面
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (sessionStorage.getItem('sw-reloaded') === '1') return;
-      sessionStorage.setItem('sw-reloaded', '1');
-      location.reload();
+    // 按 SW 缓存版本判断是否需要刷新：旧写法「一个会话只 reload 一次」会在 APK 升级、
+    // WebView 进程被保留时吞掉第二次更新，导致用户一直跑着旧 app.js。
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (!e.data || e.data.type !== 'INK_SW_ACTIVATED') return;
+      const key = 'inkreader:sw-cache';
+      let prev = null;
+      try { prev = localStorage.getItem(key); localStorage.setItem(key, e.data.cache); } catch (err) {}
+      if (prev && prev !== e.data.cache) location.reload();
     });
   }
   window.__INK_INIT_DONE = true; // 诊断标记：init 已完成

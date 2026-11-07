@@ -4,7 +4,8 @@
   "description": "",
   "main": "sw.js",
   "scripts": {
-    "test": "node test/smoke.mjs && node test/footnote.mjs && node test/marks.mjs",
+    "test": "node test/pro.mjs && node test/smoke.mjs && node test/footnote.mjs && node test/marks.mjs",
+    "test:pro": "node test/pro.mjs",
     "test:smoke": "node test/smoke.mjs",
     "test:footnote": "node test/footnote.mjs",
     "test:marks": "node test/marks.mjs"

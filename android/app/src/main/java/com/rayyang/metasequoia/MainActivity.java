@@ -4,7 +4,10 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeWebChromeClient;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.WebView;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient.FileChooserParams;
@@ -12,6 +15,7 @@ import android.net.Uri;
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -19,13 +23,17 @@ import java.util.ArrayList;
 
 public class MainActivity extends BridgeActivity {
     private static final int FILECHOOSER_REQ = 1001;
+    private static final int CAMERA_PERMISSION_REQ = 1002;
     private ValueCallback<Uri[]> uploadCallback;
+    private PermissionRequest pendingCameraRequest;
+    // 由 web 层在进入 / 退出阅读器时同步，用于决定音量键是否作为翻页键消费。
+    private volatile boolean readerActive = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 在 Capacitor 完成 WebView 初始化后，替换其 WebChromeClient 为“仅重写文件选择”的子类，
-        // 其余（桥接 / 权限 / 全屏视频 / JS 弹窗 / 控制台等）全部沿用 Capacitor 原生实现。
+        // 在 Capacitor 完成 WebView 初始化后，替换其 WebChromeClient。
+        // FileChooser 之外，新增 getUserMedia 的相机权限桥接；其余回调仍继承 Capacitor 原生实现。
         installFileChooserClient();
     }
 
@@ -34,15 +42,18 @@ public class MainActivity extends BridgeActivity {
         if (bridge == null) return;
         WebView wv = bridge.getWebView();
         if (wv == null) return;
-        wv.setWebChromeClient(new FileChooserClient(bridge, this));
-        // 暴露原生接口给 JS：阅读器内保持屏幕常亮（FLAG_KEEP_SCREEN_ON），离开阅读器时恢复
+        wv.setWebChromeClient(new ReaderChromeClient(bridge, this));
+        // 暴露原生接口给 JS：屏幕常亮 + 阅读器激活状态（音量键翻页的判断依据）
         wv.addJavascriptInterface(new ScreenOnBridge(this), "AndroidScreenOn");
     }
 
-    // 仅重写 onShowFileChooser；其它所有回调继承 BridgeWebChromeClient，保证不破坏 Capacitor 桥接。
-    private static class FileChooserClient extends BridgeWebChromeClient {
+    private boolean hasCameraPermission() {
+        return checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private static class ReaderChromeClient extends BridgeWebChromeClient {
         private final MainActivity host;
-        FileChooserClient(Bridge bridge, MainActivity host) {
+        ReaderChromeClient(Bridge bridge, MainActivity host) {
             super(bridge);
             this.host = host;
         }
@@ -50,6 +61,53 @@ public class MainActivity extends BridgeActivity {
         public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePathCallback, FileChooserParams params) {
             return host.showFileChooser(filePathCallback, params);
         }
+        @Override
+        public void onPermissionRequest(final PermissionRequest request) {
+            // WebView 的 getUserMedia 不会自动授权，必须显式 grant。
+            // 只接管前置摄像头视频流；音频 / 其它资源交回 Capacitor 原生实现，避免破坏桥接。
+            boolean needsCamera = false;
+            for (String r : request.getResources()) {
+                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) { needsCamera = true; break; }
+            }
+            if (!needsCamera) { super.onPermissionRequest(request); return; }
+            if (host.hasCameraPermission()) {
+                request.grant(new String[]{ PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+                return;
+            }
+            host.pendingCameraRequest = request;
+            host.requestPermissions(new String[]{ Manifest.permission.CAMERA }, CAMERA_PERMISSION_REQ);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != CAMERA_PERMISSION_REQ || pendingCameraRequest == null) return;
+        PermissionRequest req = pendingCameraRequest;
+        pendingCameraRequest = null;
+        boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        if (granted) req.grant(new String[]{ PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+        else req.deny(); // 拒绝授权时 JS 侧会收到错误并自动降级为定时自动翻页
+    }
+
+    // 音量键翻页：墨水屏设备 / 单手握持的常见需求。仅在阅读器内消费，
+    // 书架 / 设置页仍保留系统调音行为。
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (readerActive && event.getAction() == KeyEvent.ACTION_DOWN) {
+            int kc = event.getKeyCode();
+            if (kc == KeyEvent.KEYCODE_VOLUME_UP || kc == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                final String dir = (kc == KeyEvent.KEYCODE_VOLUME_UP) ? "prev" : "next";
+                Bridge bridge = getBridge();
+                WebView wv = (bridge == null) ? null : bridge.getWebView();
+                if (wv != null) {
+                    wv.evaluateJavascript(
+                        "window.__inkVolumeTurn && window.__inkVolumeTurn('" + dir + "')", null);
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     boolean showFileChooser(ValueCallback<Uri[]> cb, FileChooserParams params) {
@@ -113,8 +171,8 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // JS 可调用的原生桥：控制屏幕常亮。仅阅读器激活时由 JS 开启，离开阅读器时关闭，
-    // 避免书架 / 设置页也常亮费电。FLAG_KEEP_SCREEN_ON 由系统负责在 Activity 不可见时自动忽略。
+    // JS 可调用的原生桥：屏幕常亮 + 阅读器激活状态。
+    // Web / PWA 环境不存在该对象，JS 侧一律做特性检测后降级。
     private static class ScreenOnBridge {
         private final MainActivity host;
         ScreenOnBridge(MainActivity h) { host = h; }
@@ -124,6 +182,10 @@ public class MainActivity extends BridgeActivity {
                 if (on) host.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else host.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             });
+        }
+        @JavascriptInterface
+        public void setReaderActive(boolean on) {
+            host.readerActive = on;
         }
     }
 }

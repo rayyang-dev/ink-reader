@@ -9,7 +9,50 @@
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const fflate = require('../www/js/vendor/fflate.js');
+
+// 冒烟测试不再硬依赖某台电脑桌面上的书：找不到样本书时，用 fflate 在内存里
+// 合成一本最小 EPUB（含一张图片 + 足够文字），保证在任意机器上都能跑。
+function ensureSampleEpub() {
+  const preferred = 'C:/Users/杨睿/Desktop/雍正帝：中国的独裁君主.epub';
+  if (fs.existsSync(preferred)) return preferred;
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=',
+    'base64'
+  );
+  const body = Array.from({ length: 12 }, (_, i) =>
+    `<p>这是冒烟测试用的第 ${i + 1} 段正文，用来验证分页引擎能够在真实屏幕尺寸下切出有内容的页面，并确保连续翻页之后控制条按钮依然可以被正常点中。</p>`
+  ).join('');
+  const files = {
+    'META-INF/container.xml': `<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+<rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>`,
+    'OEBPS/content.opf': `<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="BookId">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>冒烟测试样本</dc:title><dc:creator>regression</dc:creator></metadata>
+<manifest>
+<item id="c1" href="Text/chapter1.xhtml" media-type="application/xhtml+xml"/>
+<item id="png" href="Images/cover.png" media-type="image/png"/>
+</manifest>
+<spine><itemref idref="c1"/></spine>
+</package>`,
+    'OEBPS/Text/chapter1.xhtml': `<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>第一章</h1>
+<img src="../Images/cover.png" alt="封面" />${body}</body></html>`,
+  };
+  const input = {};
+  for (const [k, v] of Object.entries(files)) input[k] = fflate.strToU8(v);
+  input['OEBPS/Images/cover.png'] = new Uint8Array(png);
+  const out = path.join(os.tmpdir(), 'inkreader-smoke-sample.epub');
+  fs.writeFileSync(out, Buffer.from(fflate.zipSync(input, { level: 0 })));
+  return out;
+}
 
 const ROOT = path.resolve('www');
 const MIME = {
@@ -82,15 +125,22 @@ async function tapViewport(where) {
 }
 
 const report = { steps: [] };
-const EPUB = 'C:/Users/杨睿/Desktop/雍正帝：中国的独裁君主.epub';
+const EPUB = ensureSampleEpub();
 try {
   // —— 1) 加载 ——
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await wait(800);
 
-  // 切到简约主题（测试水平滑动翻页），持久化后重载
+  // 切到简约主题并开启翻页动画，持久化后重载。
+  // 修正：真实 key 是 inkreader:settings（带冒号）；旧写法用 inkreader-settings 导致
+  // 主题从未切换、pageFlip 也从未开启，「水平滑动翻页」用例实际是空跑。
   await page.evaluate(() => {
-    try { const s = JSON.parse(localStorage.getItem('inkreader-settings') || '{}'); s.theme = 'simple'; localStorage.setItem('inkreader-settings', JSON.stringify(s)); } catch (e) {}
+    try {
+      const k = 'inkreader:settings';
+      const s = JSON.parse(localStorage.getItem(k) || '{}');
+      s.theme = 'simple'; s.pageFlip = true;
+      localStorage.setItem(k, JSON.stringify(s));
+    } catch (e) {}
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await wait(800);
@@ -117,6 +167,14 @@ try {
     }).length;
     return { total: imgs.length, inlined };
   });
+  // 首次进入阅读器会弹出一次性引导（全屏），按真实用户操作关掉，
+  // 否则后面「控制条按钮是否被遮挡」的检查会被引导层挡住。
+  await page.evaluate(() => {
+    const g = document.getElementById('pro-guide');
+    const ok = document.getElementById('pro-guide-ok');
+    if (g && ok && g.classList.contains('pro-on')) ok.click();
+  });
+  await wait(150);
   report.steps.push({
     name: '导入EPUB-阅读器打开且图片内联',
     readerOpen, ...imgState, dialogs: dialogs.length,

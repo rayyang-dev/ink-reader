@@ -161,7 +161,8 @@ const K_BOOKMARKS = 'inkreader:bookmarks';
 const K_HIGHLIGHTS = 'inkreader:highlights'; // 正文标注：{ bookId: [{ id, text, ci, pi, at }] }
 const K_FAVORITES = 'inkreader:favorites';  // 收藏语句：{ bookId: [{ id, text, ci, pi, at }] }
 
-const memoryKV = { settings: null, progress: {}, bookmarks: {}, highlights: {}, favorites: {} };
+// K_STATS 以前没有内存兜底：隐私模式 / localStorage 被拒时统计与打卡会 100% 静默失效。
+const memoryKV = { settings: null, progress: {}, bookmarks: {}, highlights: {}, favorites: {}, stats: {} };
 
 function lsGet(key, fallback) {
   try {
@@ -173,6 +174,7 @@ function lsGet(key, fallback) {
     if (key === K_BOOKMARKS) return memoryKV.bookmarks || fallback;
     if (key === K_HIGHLIGHTS) return memoryKV.highlights || fallback;
     if (key === K_FAVORITES) return memoryKV.favorites || fallback;
+    if (key === K_STATS) return memoryKV.stats || fallback;
     return fallback;
   }
 }
@@ -185,6 +187,7 @@ function lsSet(key, value) {
     else if (key === K_BOOKMARKS) memoryKV.bookmarks = value;
     else if (key === K_HIGHLIGHTS) memoryKV.highlights = value;
     else if (key === K_FAVORITES) memoryKV.favorites = value;
+    else if (key === K_STATS) memoryKV.stats = value;
   }
 }
 
@@ -211,6 +214,18 @@ export const DEFAULT_SETTINGS = {
   shelfGroupByCat: false, // 书架是否按分类分组展示
   keepScreenOn: true, // 阅读时保持屏幕常亮（不锁屏）；离开阅读器自动恢复
   categories: ['文学', '历史', '政治', '小说'], // 默认书籍分类（可在设置/书架顶部增删）
+
+  // ---- Pro：自动翻页与端侧视线 ----
+  autoMode: 'off',            // off | timed | adaptive | gaze；敏感能力默认关闭
+  autoIntervalMs: 12000,      // 定时 / 节奏跟随的翻页间隔
+  autoConfirmMs: 700,         // 自动翻页前的可取消预告窗口（0 = 直接翻）
+  gazeSensitivity: 3,         // 1(保守) .. 5(灵敏)
+  gazeDwellMs: 320,           // 视线在页底的最短驻留
+  gazeCooldownMs: 1600,       // 两次回扫触发之间的冷却
+  gazeSampleMs: 90,           // 取帧间隔（约 11fps，够用且省电）
+  gazeEngine: 'auto',         // auto | system | sim；auto 会优先探测本地端侧模型
+  gazeCalibration: null,      // { top, bottom } 个人视线量程
+  brightness: 100,            // 阅读内亮度（纯 CSS 遮罩，不需要系统权限）
 };
 
 export function loadSettings() {
@@ -273,21 +288,29 @@ function dayTotal(day) {
   for (const id in day.byBook) t += day.byBook[id];
   return t;
 }
+// 统计常驻内存累加器：原实现每秒都重新 loadStats() 读「上次落盘快照」，
+// 5 秒节流窗口里只有 1 次的 +1000ms 被写回，其余 4 次算完即弃 —— 计时少算近 5 倍，
+// 打卡几乎永远触发不了。现在只在内存对象上累加，定期 flush 整份数据。
+let statsMemory = null;
+let lastStatsPersist = 0;
 export function loadStats() {
-  return lsGet(K_STATS, {});
+  return statsMemory || lsGet(K_STATS, {});
 }
 export function saveStats(stats) {
+  statsMemory = stats;
   lsSet(K_STATS, stats);
+  lastStatsPersist = Date.now();
 }
 // 累计某本书当日的阅读毫秒数；跨过打卡阈值时标记当日打卡并返回 justCheckedIn
-let lastStatsPersist = 0; // 节流：避免每秒把整个 stats JSON 写入 localStorage
 export function addReadingTime(bookId, ms) {
   if (!bookId || !ms || ms <= 0) return { dayStat: null, justCheckedIn: false };
-  const stats = loadStats();
+  const stats = statsMemory || loadStats();
   const k = todayKey();
+  // 跨天时重置内存快照中的日期键由调用方自然产生，无需额外处理
   if (!stats[k]) stats[k] = { byBook: {}, checkin: false, checkinAt: null };
   const day = stats[k];
   day.byBook[bookId] = (day.byBook[bookId] || 0) + ms;
+  statsMemory = stats;
   const goal = (loadSettings().checkinGoalMin || 10) * 60000;
   let justCheckedIn = false;
   if (!day.checkin && dayTotal(day) >= goal) {
@@ -295,12 +318,8 @@ export function addReadingTime(bookId, ms) {
     day.checkinAt = Date.now();
     justCheckedIn = true;
   }
-  // 节流落盘：打卡达成时强制写盘避免丢失；其余最多每 5 秒写一次
-  const now = Date.now();
-  if (justCheckedIn || now - lastStatsPersist > 5000) {
-    saveStats(stats);
-    lastStatsPersist = now;
-  }
+  // 打卡达成时强制写盘；其余最多每 5 秒写一次（写的是完整累加结果，不丢增量）
+  if (justCheckedIn || Date.now() - lastStatsPersist > 5000) saveStats(stats);
   return { dayStat: day, justCheckedIn };
 }
 // 按 日 / 周 / 月 聚合统计；返回 { totalMs, byBook, checkinDays, days }

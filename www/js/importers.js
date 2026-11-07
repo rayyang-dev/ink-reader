@@ -284,11 +284,25 @@ function extractBody(html) {
     .replace(/<meta\b[^>]*>/gi, '');
   return body;
 }
+// 书籍 HTML 是不可信输入：导入后会被注入活跃 DOM（分页测量容器 + 阅读页），
+// 残留事件属性 / javascript: / 外链资源就可能在 WebView 里执行脚本或静默外联。
+// 原来的 3 条正则挡不住「无引号属性」「单引号 javascript:」「svg onbegin」「srcdoc」。
+// 这里保持「字符串级」净化而不做 DOMParser 重新序列化：EPUB 的 SVG <image xlink:href>
+// 与脚注锚点依赖原始结构，重序列化有破坏图片与跨文件脚注的风险。
 function sanitize(html) {
-  return html
-    .replace(/\son\w+="[^"]*"/gi, '')
-    .replace(/\son\w+='[^']*'/gi, '')
-    .replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+  return String(html)
+    // 危险容器整体移除（成对 + 自闭合），保留 svg（封面与插图常用）
+    .replace(/<\s*(script|iframe|object|embed|form|style|template|noscript|frameset|frame)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+    .replace(/<\s*(script|iframe|object|embed|form|meta|link|base|input|button|textarea|select|style|template|noscript)\b[^>]*\/?>/gi, '')
+    // 所有事件属性：双引号 / 单引号 / 无引号 全覆盖
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s(?:srcdoc|formaction)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // javascript: / vbscript: 与非图片 data: URI（引号与无引号三种形态）
+    .replace(/((?:href|src|xlink:href|action|data)\s*=\s*)(["'])\s*(?:javascript|vbscript)\s*:[^"']*\2/gi, '$1"#"')
+    .replace(/((?:href|src|xlink:href|action|data)\s*=\s*)(["'])data:(?!image\/(?:png|jpe?g|gif|webp|svg\+xml|bmp|avif)\b)[^"']*\2/gi, '$1"#"')
+    .replace(/((?:href|src|xlink:href|action|data)\s*=\s*)(?:javascript|vbscript|data)\s*:[^\s>]+/gi, '$1"#"')
+    // 本地优先 / 零追踪：外链资源不自动加载、点击也不跳出应用
+    .replace(/((?:href|src|xlink:href)\s*=\s*)(["'])(?:https?:)?\/\/[^"']*\2/gi, '$1"#" data-ink-blocked="1"');
 }
 function findTitle(html, tocMap, fullKey, idx) {
   if (tocMap.has(fullKey)) return tocMap.get(fullKey);
@@ -406,7 +420,9 @@ export async function parsePdf(file) {
 
 // ================= 通用小工具（FB2 / HTML / DOCX 共用） =================
 function esc(s) {
-  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // 必须转义引号：FB2 会把 href 拼进双引号属性，不转义即可属性逃逸注入。
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function localNameOf(node) { return node.localName || node.nodeName || ''; }
 function byLocal(root, name) {
@@ -426,12 +442,7 @@ function getAttr(node, n) {
   return '';
 }
 function sanitizeHtml(html) {
-  return html
-    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
-    .replace(/\son\w+="[^"]*"/gi, '')
-    .replace(/\son\w+='[^']*'/gi, '')
-    .replace(/(href|src)="javascript:[^"]*"/gi, '$1="#"');
+  return sanitize(html); // FB2 / HTML / DOCX 与 EPUB 共用同一套净化规则
 }
 
 // ================= FB2（FictionBook，纯 XML，DOMParser 直解） =================
